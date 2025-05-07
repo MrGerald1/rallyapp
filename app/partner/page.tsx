@@ -151,7 +151,7 @@ export default function PartnerPage() {
           </p>
           <Button
             size="lg"
-            className="bg-primary text-white hover:bg-primary/90"
+            className="bg-primary text-black hover:bg-primary/90"
             onClick={() => {
               window.location.href = "mailto:kamsonwani@yahoo.com?subject=Rally Partnership Inquiry"
             }}
@@ -162,7 +162,7 @@ export default function PartnerPage() {
         </div>
       </main>
 
-      <footer className="mt-12 bg-foreground px-4 py-6 text-white sm:mt-16 sm:py-8">
+      <footer className="mt-12 bg-black px-4 py-6 text-white sm:mt-16 sm:py-8">
         <div className="container mx-auto max-w-3xl text-center">
           <p className="mb-3 sm:mb-4">© 2025 Rally. Made with ❤️ in Nigeria.</p>
           <div className="flex justify-center space-x-4 text-sm">

@@ -17,40 +17,28 @@ export function CountdownTimer() {
       // Check if current time is after deadline
       if (now > deadline) {
         setAfterDeadline(true)
-
-        // Calculate time until next day's challenge
-        const tomorrow = new Date(now)
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        tomorrow.setHours(9, 0, 0, 0) // 9 AM next day
-
-        const diff = tomorrow.getTime() - now.getTime()
-        const hours = Math.floor(diff / (1000 * 60 * 60))
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000)
-
-        return `New challenge in ${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+        return "Today's challenge has ended"
       }
 
       const diff = deadline.getTime() - now.getTime()
       const hours = Math.floor(diff / (1000 * 60 * 60))
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
 
-      return `Today's challenge ends in ${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+      return `You've got ${hours}h ${minutes}m left to try something new today!`
     }
 
     // Initial calculation
     setTimeLeft(calculateTimeLeft())
 
-    // Update every second
+    // Update every minute
     const timer = setInterval(() => {
       setTimeLeft(calculateTimeLeft())
-    }, 1000)
+    }, 60000)
 
     return () => clearInterval(timer)
   }, [])
 
-  return <div className="font-semibold text-foreground md:text-lg">{timeLeft}</div>
+  return <div className="text-center font-semibold text-foreground md:text-lg">{timeLeft}</div>
 }
 
 // Export the isAfterDeadline check as a utility function

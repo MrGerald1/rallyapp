@@ -1,62 +1,83 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { NextResponse } from "next/server"
+import { createServerSupabaseClient } from "@/lib/supabase"
 
 export async function GET(request: Request) {
-  const supabase = createRouteHandlerClient({ cookies })
-
   try {
-    // Get current week's start date (Sunday)
+    const url = new URL(request.url)
+    const userEmail = url.searchParams.get("email") || ""
+
+    const supabase = createServerSupabaseClient()
+
+    // Get the start of the current week (Monday)
     const today = new Date()
-    const startOfWeek = new Date(today)
-    startOfWeek.setDate(today.getDate() - today.getDay()) // Go to Sunday
+    const day = today.getDay()
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1) // Adjust when day is Sunday
+    const startOfWeek = new Date(today.setDate(diff))
     startOfWeek.setHours(0, 0, 0, 0)
 
-    // Get submissions from this week
-    const { data: weeklySubmissions, error: submissionsError } = await supabase
+    console.log(`Fetching submissions since ${startOfWeek.toISOString()}`)
+
+    // Query to get users with their streak counts for this week
+    const { data, error } = await supabase
       .from("submissions")
-      .select("email")
+      .select(`
+        name,
+        email,
+        created_at
+      `)
       .gte("created_at", startOfWeek.toISOString())
+      .order("created_at", { ascending: false })
 
-    if (submissionsError) {
-      console.error("Error fetching submissions:", submissionsError)
-      return Response.json([])
+    if (error) {
+      console.error("Supabase error:", error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Get unique emails from this week's submissions
-    const weeklyEmails = [...new Set(weeklySubmissions.map((sub) => sub.email))]
+    // Process the data to calculate streaks and create the leaderboard
+    const userStreaks = new Map()
 
-    if (weeklyEmails.length === 0) {
-      return Response.json([])
+    // Group submissions by user and count unique days
+    data?.forEach((submission) => {
+      const email = submission.email
+      const name = submission.name
+      const date = new Date(submission.created_at).toISOString().split("T")[0] // Get date part only
+
+      if (!userStreaks.has(email)) {
+        userStreaks.set(email, { name, email, streak: 0, days: new Set() })
+      }
+
+      const user = userStreaks.get(email)
+      user.days = user.days || new Set()
+      user.days.add(date)
+      user.streak = user.days.size
+    })
+
+    // Convert to array and sort by streak
+    const leaderboard = Array.from(userStreaks.values())
+      .map(({ name, email, streak }) => ({ name, email, streak }))
+      .sort((a, b) => b.streak - a.streak)
+      .slice(0, 10) // Get top 10
+      .map((user, index) => ({ ...user, position: index + 1 }))
+
+    // Find the user's position if they're not in the top 10
+    let userPosition = null
+    if (userEmail && !leaderboard.some((user) => user.email === userEmail)) {
+      const allUsers = Array.from(userStreaks.values())
+        .map(({ name, email, streak }) => ({ name, email, streak }))
+        .sort((a, b) => b.streak - a.streak)
+
+      const userIndex = allUsers.findIndex((user) => user.email === userEmail)
+      if (userIndex !== -1) {
+        userPosition = userIndex + 1
+      }
     }
 
-    // Get streak data for users who submitted this week
-    const { data: streakData, error: streakError } = await supabase
-      .from("streaks")
-      .select("user_email, points, current_streak, longest_streak")
-      .in("user_email", weeklyEmails)
-      .order("points", { ascending: false })
-
-    if (streakError) {
-      console.error("Error fetching streak data:", streakError)
-      return Response.json([])
-    }
-
-    if (!streakData || !Array.isArray(streakData)) {
-      return Response.json([])
-    }
-
-    // Format the leaderboard data
-    const leaderboard = streakData.map((entry, index) => ({
-      email: entry.user_email || "",
-      name: entry.user_email ? entry.user_email.split("@")[0] : "User", // Simple name extraction
-      points: entry.points || 0,
-      currentStreak: entry.current_streak || 0,
-      position: index + 1,
-    }))
-
-    return Response.json(leaderboard)
-  } catch (error) {
-    console.error("Error fetching weekly leaderboard:", error)
-    return Response.json([])
+    return NextResponse.json({
+      leaderboard,
+      userPosition,
+    })
+  } catch (error: any) {
+    console.error("Unexpected error:", error)
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
 }

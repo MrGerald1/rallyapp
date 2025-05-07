@@ -65,15 +65,3 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     return NextResponse.json({ error: "Failed to delete challenge" }, { status: 500 })
   }
 }
-
-// Add OPTIONS method to handle preflight requests
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      Allow: "GET, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Methods": "GET, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    },
-  })
-}

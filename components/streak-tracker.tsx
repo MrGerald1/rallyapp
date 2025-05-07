@@ -5,14 +5,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Sparkles, Star, Info } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { useChallengeStore } from "@/lib/store"
+import { fetchUserStreak } from "@/lib/api"
 
 export function StreakTracker() {
-  const [showDialog, setShowDialog] = useState(false)
-  const { streakData, fetchUserStreak, hasSubmittedToday, streakLoaded } = useChallengeStore()
-
+  const [streak, setStreak] = useState(0)
+  const [longestStreak, setLongestStreak] = useState(0)
+  const [submissionCount, setSubmissionCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
   const [userEmail, setUserEmail] = useState<string | null>(null)
 
   useEffect(() => {
@@ -20,20 +19,50 @@ export function StreakTracker() {
     const storedEmail = localStorage.getItem("rally_user_email")
     setUserEmail(storedEmail)
 
-    // Fetch streak data if user is logged in
     if (storedEmail) {
+      // Fetch streak data from the API
+      setIsLoading(true)
       fetchUserStreak(storedEmail)
+        .then((data) => {
+          setStreak(data.currentStreak)
+          setLongestStreak(data.longestStreak)
+          setSubmissionCount(data.submissionCount)
+        })
+        .catch((error) => {
+          console.error("Error fetching streak:", error)
+        })
+        .finally(() => {
+          setIsLoading(false)
+        })
+    } else {
+      // Fallback to local streak tracking if no email is stored
+      const storedStreak = localStorage.getItem("rally_streak")
+      if (storedStreak) {
+        setStreak(Number.parseInt(storedStreak))
+      }
+      setIsLoading(false)
     }
-  }, [fetchUserStreak, hasSubmittedToday])
+  }, [])
 
-  // Extract streak data
-  const streak = streakData?.currentStreak || 0
-  const longestStreak = streakData?.longestStreak || 0
-  const submissionCount = streakData?.submissionCount || 0
-  const points = streakData?.points || 0
+  // If still loading, show a loading state
+  if (isLoading) {
+    return (
+      <Card className="mb-4 overflow-hidden shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span className="font-medium">Loading streak data...</span>
+            </div>
+          </div>
+          <Progress className="mt-2" value={0} />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
-    <Card className="mb-4 overflow-hidden shadow-sm bg-[#EAF8DD] border-none rounded-lg">
+    <Card className="mb-4 overflow-hidden border border-primary/30 shadow-sm">
       <CardContent className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
           <div className="flex items-center space-x-2">
@@ -43,28 +72,31 @@ export function StreakTracker() {
               <Star className="h-5 w-5 text-primary flex-shrink-0" />
             )}
             <span className="font-medium">
-              {streak === 0
-                ? hasSubmittedToday
-                  ? "Streak Starting Tomorrow"
-                  : "Start Your Streak"
-                : `${streak} Day${streak !== 1 ? "s" : ""} Streak`}
+              {streak === 0 ? "Start Your Streak" : `${streak} Day${streak !== 1 ? "s" : ""} of New Beginnings`}
             </span>
 
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setShowDialog(true)}>
-                    <Info className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="sr-only">Streak info</span>
-                  </Button>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p className="max-w-xs text-xs">Click for streak info</p>
+                  <p className="max-w-xs text-xs">
+                    {userEmail
+                      ? "Rally tracks your daily adventures across all your devices."
+                      : "Your streak represents the number of days in a row you've completed a challenge on Rally"}
+                  </p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
-          <span className="text-xs text-muted-foreground">{streak === 0 ? "" : `${points} points`}</span>
+          <span className="text-xs text-muted-foreground">
+            {streak === 0
+              ? "Start something new today!"
+              : streak === 1
+                ? "Day 1 of your journey!"
+                : `${streak} consecutive days of new experiences!`}
+          </span>
         </div>
 
         {/* Show progress visualization with clear distinction between started/not started */}
@@ -95,14 +127,6 @@ export function StreakTracker() {
           )}
         </div>
 
-        {streak === 0 && (
-          <div className="mt-3">
-            <p className="text-sm text-muted-foreground">
-              Complete today's challenge to start your streak and earn points!
-            </p>
-          </div>
-        )}
-
         <div className="mt-3 flex flex-col sm:flex-row sm:justify-between text-xs text-muted-foreground">
           {/* Stats section */}
           {(longestStreak > 0 || submissionCount > 0) && (
@@ -117,29 +141,6 @@ export function StreakTracker() {
           )}
         </div>
       </CardContent>
-
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>About Streaks & Points</DialogTitle>
-          </DialogHeader>
-          <DialogDescription>
-            Each completed day gives you 5 points. If you miss consecutive days, you lose your streak.
-          </DialogDescription>
-          <div className="mt-4 space-y-2">
-            <h4 className="font-semibold">Points System:</h4>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Completing a daily challenge: +5 pts</li>
-              <li>Starting within 3 hrs of drop: +2 pts</li>
-              <li>3-day streak bonus: +3 pts</li>
-              <li>7-day streak bonus: +10 pts</li>
-              <li>30-day streak bonus: +15 pts</li>
-              <li>Giving compliments: +1 pt each (max 3/day)</li>
-              <li>Receiving compliments: +2 pts each (max 5/day)</li>
-            </ul>
-          </div>
-        </DialogContent>
-      </Dialog>
     </Card>
   )
 }

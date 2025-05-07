@@ -5,7 +5,7 @@ import { Logo } from "@/components/logo"
 import { ComebackReminder } from "@/components/comeback-reminder"
 import { StreakTracker } from "@/components/streak-tracker"
 import { HowItWorks } from "@/components/how-it-works"
-import { CommunityTabs } from "@/components/community-tabs"
+import { WeeklyLeaderboard } from "@/components/weekly-leaderboard"
 
 export default function Home() {
   return (
@@ -17,14 +17,12 @@ export default function Home() {
           <div className="mb-2 flex justify-center sm:mb-4">
             <Logo />
           </div>
-          <h1 className="mb-1 text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">Rally</h1>
-          <p className="mb-2 text-lg font-medium text-foreground/80 sm:text-xl md:text-2xl">
-            Stop waiting for change. Rally gives you a fun nudge every day to try something new.
-          </p>
+          <h1 className="mb-1 text-3xl font-bold sm:text-4xl md:text-5xl">Rally</h1>
+          <p className="mb-2 text-lg font-medium text-foreground/80 sm:text-xl md:text-2xl">See Yourself Grow</p>
         </div>
 
         {/* Countdown Timer - Overlaid on the challenge card */}
-        <div className="mb-4 rounded-lg bg-secondary/30 p-3 text-center backdrop-blur-sm">
+        <div className="mb-4 rounded-lg bg-secondary/10 p-3 text-center backdrop-blur-sm">
           <CountdownTimer />
         </div>
 
@@ -43,26 +41,20 @@ export default function Home() {
 
         {/* Single column layout for remaining content */}
         <div className="space-y-8">
-          {/* Community Tabs - Submissions and Leaderboard */}
-          <CommunityTabs />
+          {/* Weekly Leaderboard */}
+          <WeeklyLeaderboard />
 
           {/* Reminder to come back tomorrow */}
           <ComebackReminder />
         </div>
       </main>
 
-      <footer className="mt-12 bg-foreground px-4 py-6 text-white sm:mt-16 sm:py-8">
+      <footer className="mt-12 bg-[#2C2C2C] px-4 py-6 text-white sm:mt-16 sm:py-8">
         <div className="container mx-auto max-w-3xl text-center">
           <p className="mb-3 sm:mb-4">© 2025 Rally. Made with ❤️ in Nigeria.</p>
           <div className="flex flex-wrap justify-center gap-4 text-sm">
             <a href="/why" className="hover:underline">
               Why Rally?
-            </a>
-            <a href="/how-it-works" className="hover:underline">
-              How It Works
-            </a>
-            <a href="/complements" className="hover:underline">
-              Compliments
             </a>
             <a href="/partner" className="hover:underline">
               Partner with Us

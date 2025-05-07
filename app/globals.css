@@ -3,26 +3,25 @@
 @tailwind utilities;
 
 :root {
-  --background: #fff2ab; /* Vibrant yellow-orange for a dynamic and inviting canvas */
-  --foreground: #002b5c; /* Rich navy blue for high-contrast, legible text */
-  --primary: #002b5c; /* Playful pastel pink for key action elements */
-  --primary-foreground: #ffffff; /* Change to white text to maintain readability on primary elements */
-  --secondary: #b8f9e9; /* Soft pastel blue-green for secondary information and accents */
-  --secondary-foreground: #002b5c; /* Ensures consistency with the overall text color */
-  --muted: #f9dcb8; /* Gentle soft orange, ideal for hints or less critical UI parts */
-  --muted-foreground: #5e5e5e; /* Muted dark grey for subtle text that doesn't overwhelm */
-  --accent: #cff9b8; /* Vibrant green to highlight call-to-actions and interactive elements */
-  --accent-foreground: #002b5c; /* Dark text for legibility on accent buttons */
-  --card: #fff9d3; /* Card background color */
-  --card-foreground: #002b5c; /* Consistent, high-contrast text for cards */
-  --border: #e9e9e9; /* Light grey borders to delicately separate content */
-  --input: #ffffff; /* White input backgrounds for a clean, modern look */
-  --ring: #002b5c; /* Using the primary pastel pink as the focus ring for interactivity */
-  --radius: 0.5rem; /* Explicitly define the border radius value */
+  --background: #fffbf2; /* Warm White */
+  --foreground: #333333; /* Deep Charcoal */
+  --primary: #ffc107; /* Golden Star */
+  --primary-foreground: #333333; /* Deep Charcoal on primary */
+  --secondary: #a8e6cf; /* Minty Fresh */
+  --secondary-foreground: #333333; /* Deep Charcoal on secondary */
+  --muted: #f5eed5; /* Lighter version of background */
+  --muted-foreground: #6b7280; /* Subtle text */
+  --accent: #a8e6cf; /* Minty Fresh as accent */
+  --accent-foreground: #333333; /* Deep Charcoal on accent */
+  --card: #ffffff; /* White for cards */
+  --card-foreground: #333333; /* Deep Charcoal for card text */
+  --border: #e5e7eb; /* Light border */
+  --input: #e5e7eb; /* Light input */
+  --ring: #ffc107; /* Golden Star for focus rings */
 }
 
 .glow-effect {
-  filter: drop-shadow(0 0 10px rgba(246, 184, 249, 0.5)); /* Updated to primary color glow */
+  filter: drop-shadow(0 0 10px rgba(255, 193, 7, 0.5)); /* Golden Star glow */
 }
 
 @layer base {
@@ -32,25 +31,4 @@
   body {
     @apply bg-background text-foreground;
   }
-}
-
-/* Remove outer borders from cards */
-.card {
-  border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border-radius: 0.5rem; /* Explicitly add border-radius to all cards */
-}
-
-/* Custom class for cards with top accent border */
-.card-accent-top {
-  border-top-width: 0px;
-  border-right: 0;
-  border-bottom: 0;
-  border-left: 0;
-  border-radius: 0.5rem; /* Explicitly add border-radius */
-}
-
-/* Ensure all Card components have rounded corners */
-[class*="Card"] {
-  border-radius: 0.5rem !important;
 }

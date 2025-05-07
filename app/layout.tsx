@@ -44,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${inter.className} bg-[#FFF8E7]`}>
         <ThemeProvider attribute="class" defaultTheme="light">
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
             {children}
           </Suspense>
         </ThemeProvider>
