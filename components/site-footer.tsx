@@ -77,7 +77,7 @@ export function SiteFooter() {
                   className="text-gray-300 hover:text-white hover:underline"
                   rel="noreferrer"
                 >
-                  Join WhatsApp Group
+                  Join Community
                 </Link>
               </li>
               <li>

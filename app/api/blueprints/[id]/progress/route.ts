@@ -4,16 +4,17 @@ import { updateEnrollmentCurrentDay } from "@/lib/blueprint-utils"
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
+    const { searchParams } = new URL(request.url)
+    const email = searchParams.get("email")
     const blueprintId = params.id
-    const supabase = createServerSupabaseClient()
-    const url = new URL(request.url)
-    const email = url.searchParams.get("email")
 
     if (!email) {
       return NextResponse.json({ error: "Email parameter is required" }, { status: 400 })
     }
 
-    // Get the blueprint details
+    const supabase = createServerSupabaseClient()
+
+    // Get the blueprint
     const { data: blueprint, error: blueprintError } = await supabase
       .from("blueprints")
       .select("*")
@@ -25,7 +26,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: "Blueprint not found" }, { status: 404 })
     }
 
-    // Get the enrollment for this user and blueprint
+    // Get the user's enrollment
     const { data: enrollment, error: enrollmentError } = await supabase
       .from("user_blueprint_enrollments")
       .select("*")
@@ -38,10 +39,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: "Enrollment not found" }, { status: 404 })
     }
 
-    // Calculate and update the current day
+    // Update the current day based on the blueprint start date
     const currentDay = await updateEnrollmentCurrentDay(blueprintId, enrollment.id, blueprint.start_date)
 
-    // Get all tasks for this blueprint
+    // Get all tasks for the blueprint
     const { data: tasks, error: tasksError } = await supabase
       .from("blueprint_tasks")
       .select("*")
@@ -53,7 +54,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 })
     }
 
-    // Get progress for all tasks
+    // Get the user's progress for all tasks
     const { data: progress, error: progressError } = await supabase
       .from("user_blueprint_task_progress")
       .select("*")
@@ -64,26 +65,24 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: "Failed to fetch progress" }, { status: 500 })
     }
 
+    // Create a map of task ID to progress
+    const progressMap = progress.reduce((acc, item) => {
+      acc[item.task_id] = item
+      return acc
+    }, {})
+
     // Combine tasks with progress
-    const tasksWithProgress = tasks.map((task) => {
-      const taskProgress = progress.find((p) => p.task_id === task.id)
-      return {
-        ...task,
-        progress: taskProgress || null,
-        // Add a flag to indicate if this task is available based on the current day
-        is_available: task.day_number <= currentDay,
-      }
-    })
+    const tasksWithProgress = tasks.map((task) => ({
+      ...task,
+      progress: progressMap[task.id] || null,
+    }))
 
     // Count completed tasks
     const completedCount = progress.filter((p) => p.completed).length
     const totalCount = tasks.length
 
     return NextResponse.json({
-      enrollment: {
-        ...enrollment,
-        current_day: currentDay, // Always return the calculated current day
-      },
+      enrollment,
       tasks: tasksWithProgress,
       completedCount,
       totalCount,

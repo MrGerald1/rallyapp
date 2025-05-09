@@ -56,7 +56,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Challenge ID is required" }, { status: 400 })
     }
 
-    console.log(`Setting challenge ${id} as current...`)
+    // Ensure id is a valid integer
+    const challengeId = Number.parseInt(id, 10)
+    if (isNaN(challengeId)) {
+      console.error(`Invalid challenge ID: ${id}`)
+      return NextResponse.json({ error: "Challenge ID must be a valid integer" }, { status: 400 })
+    }
+
+    console.log(`Setting challenge ${challengeId} as current...`)
 
     const supabase = createServerSupabaseClient()
 
@@ -64,17 +71,17 @@ export async function POST(request: Request) {
     const { data: challengeExists, error: challengeError } = await supabase
       .from("challenges")
       .select("id")
-      .eq("id", id)
+      .eq("id", challengeId)
       .single()
 
     if (challengeError || !challengeExists) {
-      console.error(`Challenge with ID ${id} not found:`, challengeError)
-      return NextResponse.json({ error: `Challenge with ID ${id} not found` }, { status: 404 })
+      console.error(`Challenge with ID ${challengeId} not found:`, challengeError)
+      return NextResponse.json({ error: `Challenge with ID ${challengeId} not found` }, { status: 404 })
     }
 
     // First, set all challenges to not current
     console.log("Resetting all challenges to not current...")
-    const { error: resetError } = await supabase.from("challenges").update({ is_current: false }).neq("id", id)
+    const { error: resetError } = await supabase.from("challenges").update({ is_current: false }).neq("id", challengeId)
 
     if (resetError) {
       console.error("Error resetting current challenges:", resetError)
@@ -82,11 +89,11 @@ export async function POST(request: Request) {
     }
 
     // Then set the specified challenge as current
-    console.log(`Setting challenge ${id} as current...`)
+    console.log(`Setting challenge ${challengeId} as current...`)
     const { data, error } = await supabase
       .from("challenges")
       .update({ is_current: true })
-      .eq("id", id)
+      .eq("id", challengeId)
       .select()
       .single()
 

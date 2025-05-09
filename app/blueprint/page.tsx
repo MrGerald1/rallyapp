@@ -55,7 +55,7 @@ export default function BlueprintPage() {
             </h1>
             <div className="max-w-3xl">
               <p className="mb-6 text-lg font-medium leading-relaxed text-gray-300 sm:text-xl">
-                Your app, your YouTube channel, your brand, your whatever.
+                Your app, your YouTube channel, your brand. Build what's yours.
                 <span className="block mt-1 font-bold">
                   Blueprint is 26 days to stop thinking and start doing with folks who actually get it.
                 </span>
@@ -151,7 +151,7 @@ export default function BlueprintPage() {
             </div>
 
             <p className="text-xl">
-              You've researched, planned, tweaked... but then tomorrow becomes next week, and next week becomes "one day". At the end of the day... <span className="font-bold italic">it's still an idea😪.</span>
+              You've researched, planned, tweaked... but then tomorrow becomes next week, and next week becomes "one day". At the end of the day... <span className="font-bold italic">it's still an idea</span>😪.
             </p>
 
             {/* <div className="rounded-xl bg-black p-8 text-center text-white">
@@ -322,8 +322,7 @@ export default function BlueprintPage() {
           </h2>
 
           <p className="mx-auto mb-12 max-w-2xl text-xl">
-            The 26-Day Blueprint is <span className="font-bold text-[#EF6C36]">FREE</span>. Applications open May 15th,
-            2025. Spots are limited. Don't overthink it.
+            The 26-Day Blueprint is <span className="font-bold text-[#EF6C36]">FREE</span>. Applications open May 22nd to close on <span className="font-bold text-[#EF6C36]">June 6th </span>2025. Spots are limited. Don't overthink it.
           </p>
 
           <div className="relative mx-auto max-w-2xl rounded-2xl bg-white p-8 text-black shadow-2xl">

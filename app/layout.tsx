@@ -11,7 +11,7 @@ const montserrat = Montserrat({
 })
 
 export const metadata = {
-  title: "Rally - Daily Challenges",
+  title: "Rally - Try Something New",
   description: "Step outside your comfort zone with daily challenges and build meaningful habits.",
     generator: 'v0.dev'
 }

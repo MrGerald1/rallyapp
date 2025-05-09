@@ -29,3 +29,20 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to fetch enrollments" }, { status: 500 })
   }
 }
+
+// Add OPTIONS method to handle preflight requests
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      Allow: "GET, OPTIONS, HEAD",
+      "Access-Control-Allow-Methods": "GET, OPTIONS, HEAD",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  })
+}
+
+// Add HEAD method to handle HEAD requests
+export async function HEAD() {
+  return new NextResponse(null, { status: 200 })
+}

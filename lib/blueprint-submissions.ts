@@ -15,11 +15,9 @@ export async function recordBlueprintSubmission({
   taskTitle: string
 }) {
   const supabase = createServerSupabaseClient()
-
-  // Create a unique challenge ID format for blueprint tasks
   const challengeId = `blueprint_${blueprintId}_task_${taskId}`
 
-  // Check if a submission already exists for this task and user
+  // Check if a submission already exists
   const { data: existingSubmission } = await supabase
     .from("submissions")
     .select("id")
@@ -28,7 +26,6 @@ export async function recordBlueprintSubmission({
     .single()
 
   if (existingSubmission) {
-    // Submission already exists, no need to create another one
     return existingSubmission.id
   }
 
@@ -38,9 +35,9 @@ export async function recordBlueprintSubmission({
     .insert({
       user_email: userEmail,
       challenge_id: challengeId,
-      name: userEmail.split("@")[0], // Use the first part of the email as name
-      handle: userEmail.split("@")[0], // Use the first part of the email as handle
-      submission_link: `/blueprint/dashboard`, // Link back to the blueprint dashboard
+      name: userEmail.split("@")[0],
+      handle: userEmail.split("@")[0],
+      submission_link: `/blueprint/dashboard`,
     })
     .select("id")
     .single()
@@ -61,8 +58,6 @@ export async function recordBlueprintSubmission({
  */
 async function updateUserStreak(userEmail: string) {
   const supabase = createServerSupabaseClient()
-
-  // Get the user's current streak
   const { data: streak } = await supabase.from("streaks").select("*").eq("user_email", userEmail).single()
 
   if (!streak) {

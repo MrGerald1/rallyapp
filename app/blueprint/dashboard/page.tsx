@@ -16,22 +16,22 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
 
-// Removed redundant imports and state variables
+interface BlueprintData {
+  blueprint: any
+  enrollment: any
+  tasks: BlueprintTask[]
+  completedCount: number
+  totalCount: number
+  currentDay: number
+  hasStarted: boolean
+}
 
 export default function BlueprintDashboardPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [blueprintData, setBlueprintData] = useState<{
-    blueprint: any
-    enrollment: any
-    tasks: BlueprintTask[]
-    completedCount: number
-    totalCount: number
-    currentDay: number
-    hasStarted: boolean
-  }>({
+  const [blueprintData, setBlueprintData] = useState<BlueprintData>({
     blueprint: null,
     enrollment: null,
     tasks: [],
@@ -42,30 +42,23 @@ export default function BlueprintDashboardPage() {
   })
   const [activeTab, setActiveTab] = useState("current")
   const [notEnrolled, setNotEnrolled] = useState(false)
-
-  // Email verification states
   const [emailVerified, setEmailVerified] = useState(false)
   const [emailInput, setEmailInput] = useState("")
   const [verifyingEmail, setVerifyingEmail] = useState(false)
 
-  // Destructure state for easier access
   const { blueprint, enrollment, tasks, completedCount, totalCount, currentDay, hasStarted } = blueprintData
 
   useEffect(() => {
-    const checkLocalStorage = async () => {
-      const storedEmail = localStorage.getItem("rally_user_email")
-      if (storedEmail) {
-        setEmailInput(storedEmail)
-        await verifyEmail(storedEmail)
-      } else {
-        setIsLoading(false)
-      }
+    const storedEmail = localStorage.getItem("rally_user_email")
+    if (storedEmail) {
+      setEmailInput(storedEmail)
+      verifyEmail(storedEmail)
+    } else {
+      setIsLoading(false)
     }
-
-    checkLocalStorage()
   }, [])
 
-  const fetchBlueprintData = useCallback(async (email: string) => {
+  const fetchBlueprintData = useCallback(async (email: string): Promise<BlueprintData> => {
     // Fetch the active blueprint
     const blueprintResponse = await fetch("/api/blueprints/active")
     if (!blueprintResponse.ok) {
@@ -73,14 +66,11 @@ export default function BlueprintDashboardPage() {
     }
     const blueprintData = await blueprintResponse.json()
 
-    // Check if blueprint exists and has an id
     if (!blueprintData || !blueprintData.id) {
       throw new Error("No active blueprint found")
     }
 
     const blueprintId = blueprintData.id
-
-    // Check if blueprint has started
     const startDate = blueprintData.start_date ? new Date(blueprintData.start_date) : null
     const today = new Date()
     const blueprintHasStarted = startDate ? today >= startDate : false
@@ -89,7 +79,6 @@ export default function BlueprintDashboardPage() {
     const checkResponse = await fetch(
       `/api/blueprints/${blueprintId}/check-enrollment?email=${encodeURIComponent(email)}`,
     )
-
     const checkData = await checkResponse.json()
 
     if (!checkData.enrolled) {
@@ -100,7 +89,6 @@ export default function BlueprintDashboardPage() {
 
     // User is enrolled, fetch their progress
     const response = await fetch(`/api/blueprints/${blueprintId}/progress?email=${encodeURIComponent(email)}`)
-
     if (!response.ok) {
       throw new Error("Failed to fetch progress")
     }
@@ -121,11 +109,8 @@ export default function BlueprintDashboardPage() {
   const verifyEmail = async (email: string) => {
     try {
       setVerifyingEmail(true)
-
       const data = await fetchBlueprintData(email)
       setBlueprintData(data)
-
-      // Save verified email to localStorage
       localStorage.setItem("rally_user_email", email)
       setEmailVerified(true)
       return true
@@ -141,9 +126,7 @@ export default function BlueprintDashboardPage() {
   }
 
   const refreshProgress = async () => {
-    if (!emailVerified || !emailInput || !blueprint?.id) {
-      return
-    }
+    if (!emailVerified || !emailInput || !blueprint?.id) return
 
     try {
       setIsRefreshing(true)
@@ -181,9 +164,7 @@ export default function BlueprintDashboardPage() {
 
       const response = await fetch(`/api/blueprints/${blueprint.id}/tasks/${taskId}/complete`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: emailInput,
           submission_data: submissionData,
@@ -215,8 +196,6 @@ export default function BlueprintDashboardPage() {
       }))
 
       toast.success("Task completed successfully!")
-
-      // Refresh progress to ensure we have the latest data
       await refreshProgress()
     } catch (error: any) {
       console.error("Error completing task:", error)
@@ -414,18 +393,14 @@ export default function BlueprintDashboardPage() {
       } else if (activeTab === "completed") {
         return task.progress?.completed
       } else if (activeTab === "upcoming") {
-        return task.day_number > currentDay && task.day_number <= currentDay + 2 // Show only next 2 upcoming tasks
+        return task.day_number > currentDay && task.day_number <= currentDay + 2
       } else if (activeTab === "all") {
-        return task.day_number <= currentDay // Only show tasks up to the current day
+        return task.day_number <= currentDay
       }
       return false
     })
     .sort((a, b) => {
-      // Sort in descending order for the "all" tab
-      if (activeTab === "all") {
-        return b.day_number - a.day_number
-      }
-      return a.day_number - b.day_number
+      return activeTab === "all" ? b.day_number - a.day_number : a.day_number - b.day_number
     })
 
   return (

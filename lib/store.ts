@@ -54,30 +54,31 @@ interface ChallengeState {
   lastRefreshed: number
   submissionsLastRefreshed: number
   leaderboardLastRefreshed: number
+  hasSubmittedToday: boolean
 
   // Actions
-  fetchChallenges: () => Promise<void>
+  fetchChallenges: () => Promise<Challenge[]>
   fetchCurrentChallenge: () => Promise<Challenge | null>
   fetchSubmissions: () => Promise<Submission[]>
   fetchLeaderboard: () => Promise<LeaderboardEntry[]>
   fetchUserStreak: (email: string) => Promise<StreakData | null>
   refreshData: () => Promise<void>
   addSubmission: (challengeId: string, submissionData: any) => Promise<Submission | null>
-  sendCompliment: (
-    fromEmail: string,
-    toEmail: string,
-    challengeId: string,
-    message: string,
-    submissionId?: number,
-  ) => Promise<any>
+  sendCompliment: (fromEmail: string, toEmail: string, challengeId: string, message: string) => Promise<any>
   setReminder: (email: string) => Promise<void>
-  hasSubmittedToday: boolean
   setHasSubmittedToday: (value: boolean) => void
 }
 
-// Helper to check if data needs refresh (older than 5 minutes)
-const needsRefresh = (lastRefreshed: number) => {
-  return Date.now() - lastRefreshed > 5 * 60 * 1000 // 5 minutes
+// Helper to add cache-busting and headers
+const fetchWithCacheBusting = async (url: string) => {
+  const timestamp = new Date().getTime()
+  return fetch(`${url}${url.includes("?") ? "&" : "?"}_=${timestamp}`, {
+    headers: {
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    },
+  })
 }
 
 export const useChallengeStore = create<ChallengeState>()(
@@ -103,15 +104,7 @@ export const useChallengeStore = create<ChallengeState>()(
       fetchChallenges: async () => {
         set({ isLoading: true, error: null })
         try {
-          // Add cache-busting parameter and headers
-          const timestamp = new Date().getTime()
-          const response = await fetch(`/api/challenges?_=${timestamp}`, {
-            headers: {
-              "Cache-Control": "no-cache, no-store, must-revalidate",
-              Pragma: "no-cache",
-              Expires: "0",
-            },
-          })
+          const response = await fetchWithCacheBusting("/api/challenges")
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}))
@@ -131,15 +124,7 @@ export const useChallengeStore = create<ChallengeState>()(
       fetchCurrentChallenge: async () => {
         set({ isLoading: true, error: null })
         try {
-          // Always add a cache-busting parameter to prevent browser caching
-          const timestamp = new Date().getTime()
-          const response = await fetch(`/api/challenges/current?_=${timestamp}`, {
-            headers: {
-              "Cache-Control": "no-cache, no-store, must-revalidate",
-              Pragma: "no-cache",
-              Expires: "0",
-            },
-          })
+          const response = await fetchWithCacheBusting("/api/challenges/current")
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}))
@@ -147,10 +132,6 @@ export const useChallengeStore = create<ChallengeState>()(
           }
 
           const data = await response.json()
-
-          // Log the current challenge for debugging
-          console.log("Current challenge fetched:", data)
-
           set({
             currentChallenge: data,
             isLoading: false,
@@ -170,15 +151,7 @@ export const useChallengeStore = create<ChallengeState>()(
 
       fetchSubmissions: async () => {
         try {
-          // Add cache-busting parameter and headers
-          const timestamp = new Date().getTime()
-          const response = await fetch(`/api/submissions?_=${timestamp}`, {
-            headers: {
-              "Cache-Control": "no-cache, no-store, must-revalidate",
-              Pragma: "no-cache",
-              Expires: "0",
-            },
-          })
+          const response = await fetchWithCacheBusting("/api/submissions")
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}))
@@ -200,15 +173,7 @@ export const useChallengeStore = create<ChallengeState>()(
 
       fetchLeaderboard: async () => {
         try {
-          // Add cache-busting parameter and headers
-          const timestamp = new Date().getTime()
-          const response = await fetch(`/api/leaderboard/weekly?_=${timestamp}`, {
-            headers: {
-              "Cache-Control": "no-cache, no-store, must-revalidate",
-              Pragma: "no-cache",
-              Expires: "0",
-            },
-          })
+          const response = await fetchWithCacheBusting("/api/leaderboard/weekly")
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}))
@@ -216,8 +181,6 @@ export const useChallengeStore = create<ChallengeState>()(
           }
 
           const data = await response.json()
-
-          // Format the data with position
           const formattedData = data.map((entry: any, index: number) => ({
             ...entry,
             position: index + 1,
@@ -238,15 +201,7 @@ export const useChallengeStore = create<ChallengeState>()(
 
       fetchUserStreak: async (email: string) => {
         try {
-          // Add cache-busting parameter and headers
-          const timestamp = new Date().getTime()
-          const response = await fetch(`/api/streaks?email=${encodeURIComponent(email)}&_=${timestamp}`, {
-            headers: {
-              "Cache-Control": "no-cache, no-store, must-revalidate",
-              Pragma: "no-cache",
-              Expires: "0",
-            },
-          })
+          const response = await fetchWithCacheBusting(`/api/streaks?email=${encodeURIComponent(email)}`)
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}))
@@ -258,7 +213,7 @@ export const useChallengeStore = create<ChallengeState>()(
             streakData: data,
             streakLoaded: true,
             lastRefreshed: Date.now(),
-            hasSubmittedToday: false, // Reset the flag after fetching
+            hasSubmittedToday: false,
           })
           return data
         } catch (error: any) {
@@ -315,15 +270,12 @@ export const useChallengeStore = create<ChallengeState>()(
           }
 
           const newSubmission = await response.json()
-
-          // Update local state
           set((state) => ({
             submissions: [newSubmission, ...state.submissions],
             isLoading: false,
-            hasSubmittedToday: true, // Set flag to true when user submits
+            hasSubmittedToday: true,
           }))
 
-          // Refresh streak data
           const userEmail = localStorage.getItem("rally_user_email")
           if (userEmail) {
             await get().fetchUserStreak(userEmail)
@@ -337,13 +289,7 @@ export const useChallengeStore = create<ChallengeState>()(
         }
       },
 
-      sendCompliment: async (
-        fromEmail: string,
-        toEmail: string,
-        challengeId: string,
-        message: string,
-        submissionId?: number,
-      ) => {
+      sendCompliment: async (fromEmail: string, toEmail: string, challengeId: string, message: string) => {
         try {
           const response = await fetch("/api/complements", {
             method: "POST",
@@ -358,7 +304,7 @@ export const useChallengeStore = create<ChallengeState>()(
               to_user_email: toEmail,
               challenge_id: challengeId,
               message,
-              submission_id: submissionId,
+              unique_id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             }),
           })
 
@@ -367,7 +313,6 @@ export const useChallengeStore = create<ChallengeState>()(
             throw new Error(errorData.error || `Failed to send compliment: ${response.status}`)
           }
 
-          // Force refresh leaderboard after sending a compliment
           set({ leaderboardLoaded: false })
           await get().fetchLeaderboard()
 

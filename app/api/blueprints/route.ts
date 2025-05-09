@@ -58,3 +58,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to create blueprint" }, { status: 500 })
   }
 }
+
+// Add OPTIONS method to handle preflight requests
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      Allow: "GET, POST, OPTIONS, HEAD",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS, HEAD",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  })
+}
+
+// Add HEAD method to handle HEAD requests
+export async function HEAD() {
+  return new NextResponse(null, { status: 200 })
+}

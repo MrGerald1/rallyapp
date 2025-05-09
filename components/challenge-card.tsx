@@ -31,10 +31,8 @@ export function ChallengeCard() {
   const [submissionLink, setSubmissionLink] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSubmissionForm, setShowSubmissionForm] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // Check if we're past the 9pm deadline
   const [afterDeadline, setAfterDeadline] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     // Set the initial deadline state
@@ -45,26 +43,17 @@ export function ChallengeCard() {
       setAfterDeadline(isAfterDeadline())
     }, 60000)
 
-    // Try to get the user's email from localStorage to pre-fill the form
+    // Get user info from localStorage
     const storedEmail = localStorage.getItem("rally_user_email")
-    if (storedEmail) {
-      setReminderEmail(storedEmail)
-      setUserEmail(storedEmail)
-    }
-
-    // Get user's name from localStorage
     const storedName = localStorage.getItem("rally_user_name")
-    if (storedName) {
-      setUserName(storedName)
-    }
-
-    // Get user's streak from localStorage
     const storedStreak = localStorage.getItem("rally_streak")
-    if (storedStreak) {
-      setUserStreak(Number.parseInt(storedStreak, 10))
-    }
 
-    // Fetch the current challenge from the API
+    if (storedEmail) setReminderEmail(storedEmail)
+    if (storedEmail) setUserEmail(storedEmail)
+    if (storedName) setUserName(storedName)
+    if (storedStreak) setUserStreak(Number.parseInt(storedStreak, 10))
+
+    // Fetch the current challenge
     fetchCurrentChallenge()
 
     return () => clearInterval(interval)
@@ -86,25 +75,17 @@ export function ChallengeCard() {
     if (!reminderEmail) return
 
     try {
-      // Call the API to set a reminder
       const response = await fetch("/api/reminders", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: reminderEmail }),
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to set reminder")
-      }
+      if (!response.ok) throw new Error("Failed to set reminder")
 
       setReminderSet(true)
-
-      // Store the email for future use
       localStorage.setItem("rally_user_email", reminderEmail)
       setUserEmail(reminderEmail)
-
       toast.success("Reminder set successfully!")
 
       // Open the user's mail client with a pre-filled email
@@ -165,40 +146,19 @@ export function ChallengeCard() {
           body: formData,
         })
 
-        if (!uploadResponse.ok) {
-          throw new Error("Failed to upload file")
-        }
+        if (!uploadResponse.ok) throw new Error("Failed to upload file")
 
         const uploadData = await uploadResponse.json()
         submissionData.submission_link = uploadData.url
       }
 
       // Submit the challenge
-      const response = await fetch("/api/submissions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          challenge_id: currentChallenge?.id,
-          ...submissionData,
-        }),
-      })
+      const newSubmission = await addSubmission(currentChallenge?.id, submissionData)
 
-      if (!response.ok) {
-        throw new Error("Failed to submit challenge")
+      if (newSubmission) {
+        handleSubmissionSuccess(newSubmission.id)
+        toast.success("Challenge completed successfully!")
       }
-
-      const data = await response.json()
-
-      // Update streak immediately
-      const currentStreak = Number.parseInt(localStorage.getItem("rally_streak") || "0", 10)
-      const newStreak = currentStreak + 1
-      localStorage.setItem("rally_streak", newStreak.toString())
-      setUserStreak(newStreak)
-
-      handleSubmissionSuccess(data.id)
-      toast.success("Challenge completed successfully!")
     } catch (error) {
       console.error("Error submitting challenge:", error)
       toast.error("Failed to submit your challenge. Please try again.")
