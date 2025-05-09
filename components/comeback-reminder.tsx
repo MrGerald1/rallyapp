@@ -42,7 +42,7 @@ export function ComebackReminder() {
         recur: "RRULE:FREQ=DAILY;COUNT=365", // Repeat daily for 1 year
       }
 
-      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.text)}&dates=${event.dates}&details=${encodeURIComponent(event.details)}&location=${encodeURIComponent(event.location)}&recur=${encodeURIComponent(event.recur)}`
+      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.text)}&dates=${encodeURIComponent(event.dates)}&details=${encodeURIComponent(event.details)}&location=${encodeURIComponent(event.location)}&recur=${encodeURIComponent(event.recur)}`
 
       // Open calendar link in new tab
       window.open(googleCalendarUrl, "_blank")
@@ -52,12 +52,12 @@ export function ComebackReminder() {
   }
 
   return (
-    <Card className="border-2 border-dashed border-primary/20 bg-primary/5">
+    <Card className="bg-[#FFF9D3] border-none rounded-lg">
       <CardContent className="p-5">
         <div className="flex items-start space-x-4">
           <Sparkles className="mt-1 h-5 w-5 text-primary" />
           <div className="flex-1">
-            <h3 className="mb-2 font-semibold">Don't Miss Tomorrow's Challenge!</h3>
+            <h3 className="mb-2 font-semibold text-foreground">Come back tomorrow!</h3>
             <p className="mb-4 text-sm text-muted-foreground">
               Set a daily reminder and build your streak of trying new things. What will tomorrow bring?
             </p>
@@ -77,10 +77,15 @@ export function ComebackReminder() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1"
+                  className="flex-1 bg-input"
                   required
                 />
-                <Button type="submit" variant="default" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  variant="default"
+                  disabled={isLoading}
+                  className="bg-[#FF8882] text-white hover:bg-[#FF8882]/90"
+                >
                   <Bell className="mr-2 h-4 w-4" />
                   {isLoading ? "Setting..." : "Remind Me"}
                 </Button>

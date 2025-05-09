@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useChallengeStore } from "@/lib/store"
 import type { Challenge } from "@/lib/store"
+import { toast } from "sonner"
 
 interface ChallengeFormProps {
   challenge?: Challenge
@@ -16,7 +17,7 @@ interface ChallengeFormProps {
 }
 
 export function ChallengeForm({ challenge, onCancel }: ChallengeFormProps) {
-  const { addChallenge, updateChallenge, isLoading } = useChallengeStore()
+  const { isLoading, error } = useChallengeStore()
   const [formData, setFormData] = useState<Partial<Challenge>>(
     challenge || {
       title: "",
@@ -36,17 +37,51 @@ export function ChallengeForm({ challenge, onCancel }: ChallengeFormProps) {
 
     try {
       if (challenge) {
-        await updateChallenge(challenge.id, formData)
+        // Update existing challenge
+        const response = await fetch(`/api/challenges/${challenge.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to update challenge: ${response.status}`)
+        }
       } else {
-        // When creating a new challenge, don't include an ID
-        // The server will generate a unique ID
+        // Create new challenge
         const { id, ...newChallengeData } = formData as any
-        await addChallenge(newChallengeData as Omit<Challenge, "id">)
+
+        const response = await fetch("/api/challenges", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(newChallengeData),
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to create challenge: ${response.status}`)
+        }
       }
+
+      // Make sure toast is more visible and persistent
+      toast.success(challenge ? "Challenge updated successfully" : "Challenge created successfully", {
+        duration: 3000, // Show for 3 seconds
+        position: "top-center",
+      })
+
+      // Instead of reloading the page, just close the form and refresh the challenges
       onCancel()
+
+      // Trigger a refresh of the challenges list
+      // We'll use a custom event to communicate with the parent component
+      const refreshEvent = new CustomEvent("refreshChallenges")
+      window.dispatchEvent(refreshEvent)
     } catch (error) {
       console.error("Error saving challenge:", error)
-      alert(`Error: ${error instanceof Error ? error.message : "Failed to save challenge"}`)
+      toast.error(`Error: ${error instanceof Error ? error.message : "Failed to save challenge"}`)
     }
   }
 

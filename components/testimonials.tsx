@@ -25,10 +25,10 @@ const testimonials: Testimonial[] = [
 export function Testimonials() {
   return (
     <div className="mt-12 w-full">
-      <h2 className="mb-6 text-lg font-semibold">What Nigerians are saying</h2>
+      <h2 className="font-heading mb-6 text-xl font-semibold">What Nigerians are saying</h2>
       <div className="space-y-4">
         {testimonials.map((testimonial, index) => (
-          <div key={index} className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
+          <div key={index} className="rounded-lg border-none bg-card p-4 text-card-foreground shadow-sm">
             <div className="flex items-start space-x-4">
               <div className="h-10 w-10 rounded-full bg-yellow-100" />
               <div>

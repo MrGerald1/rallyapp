@@ -1,99 +1,57 @@
-import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 
 export async function GET(request: Request) {
+  const supabase = createRouteHandlerClient({ cookies })
+  const { searchParams } = new URL(request.url)
+  const email = searchParams.get("email")
+
+  if (!email) {
+    return Response.json({ error: "Email parameter is required" }, { status: 400 })
+  }
+
   try {
-    const url = new URL(request.url)
-    const email = url.searchParams.get("email")
-
-    if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 })
-    }
-
-    const supabase = createServerSupabaseClient()
-
-    // Get all submission dates for this email
+    // Get user's streak data
     const { data, error } = await supabase
-      .from("submissions")
-      .select("created_at")
-      .eq("email", email)
-      .order("created_at", { ascending: true })
+      .from("streaks")
+      .select("current_streak, longest_streak, points, last_submission_date")
+      .eq("user_email", email)
+      .single()
 
     if (error) {
-      console.error("Supabase error:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      // If no record found, return default values
+      if (error.code === "PGRST116") {
+        return Response.json({
+          currentStreak: 0,
+          longestStreak: 0,
+          submissionCount: 0,
+          points: 0,
+          lastSubmissionDate: null,
+        })
+      }
+      throw error
     }
 
-    // Calculate streak
-    let currentStreak = 0
-    let longestStreak = 0
-    let lastDate: Date | null = null
+    // Get submission count
+    const { count, error: countError } = await supabase
+      .from("submissions")
+      .select("*", { count: "exact", head: true })
+      .eq("email", email)
 
-    if (data && data.length > 0) {
-      // Convert submission dates to local date strings (without time)
-      const submissionDates = data.map((submission) => {
-        const date = new Date(submission.created_at)
-        return date.toISOString().split("T")[0]
-      })
-
-      // Remove duplicates (multiple submissions on same day)
-      const uniqueDates = [...new Set(submissionDates)].sort()
-
-      // Calculate current streak
-      currentStreak = 1 // Start with 1 for the first submission
-      longestStreak = 1
-
-      for (let i = 1; i < uniqueDates.length; i++) {
-        const currentDate = new Date(uniqueDates[i])
-        const previousDate = new Date(uniqueDates[i - 1])
-
-        // Add one day to previous date
-        previousDate.setDate(previousDate.getDate() + 1)
-
-        if (currentDate.toISOString().split("T")[0] === previousDate.toISOString().split("T")[0]) {
-          // Consecutive day
-          currentStreak++
-        } else {
-          // Streak broken
-          if (currentStreak > longestStreak) {
-            longestStreak = currentStreak
-          }
-          currentStreak = 1
-        }
-      }
-
-      // Check if current streak is the longest
-      if (currentStreak > longestStreak) {
-        longestStreak = currentStreak
-      }
-
-      // Check if the streak is still active (last submission was today or yesterday)
-      const lastSubmissionDate = new Date(uniqueDates[uniqueDates.length - 1])
-      const today = new Date()
-      const yesterday = new Date(today)
-      yesterday.setDate(yesterday.getDate() - 1)
-
-      // Convert to date strings for comparison
-      const todayString = today.toISOString().split("T")[0]
-      const yesterdayString = yesterday.toISOString().split("T")[0]
-      const lastSubmissionString = lastSubmissionDate.toISOString().split("T")[0]
-
-      // If last submission wasn't today or yesterday, streak is broken
-      if (lastSubmissionString !== todayString && lastSubmissionString !== yesterdayString) {
-        currentStreak = 0
-      }
-
-      lastDate = lastSubmissionDate
+    if (countError) {
+      throw countError
     }
 
-    return NextResponse.json({
-      currentStreak,
-      longestStreak,
-      lastSubmissionDate: lastDate ? lastDate.toISOString() : null,
-      submissionCount: data.length,
+    // Format response
+    return Response.json({
+      currentStreak: data.current_streak || 0,
+      longestStreak: data.longest_streak || 0,
+      submissionCount: count || 0,
+      points: data.points || 0,
+      lastSubmissionDate: data.last_submission_date,
     })
-  } catch (error: any) {
-    console.error("Unexpected error:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
+  } catch (error) {
+    console.error("Error fetching user streak:", error)
+    return Response.json({ error: "Failed to fetch user streak" }, { status: 500 })
   }
 }

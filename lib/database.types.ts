@@ -1,0 +1,191 @@
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
+export interface Database {
+  public: {
+    Tables: {
+      challenges: {
+        Row: {
+          author: string
+          category: string
+          created_at: string | null
+          description: string
+          difficulty: string
+          hashtag: string
+          id: string
+          is_current: boolean | null
+          quote: string
+          scheduled_date: string
+          title: string
+        }
+        Insert: {
+          author: string
+          category: string
+          created_at?: string | null
+          description: string
+          difficulty: string
+          hashtag: string
+          id: string
+          is_current?: boolean | null
+          quote: string
+          scheduled_date: string
+          title: string
+        }
+        Update: {
+          author?: string
+          category?: string
+          created_at?: string | null
+          description?: string
+          difficulty?: string
+          hashtag?: string
+          id?: string
+          is_current?: boolean | null
+          quote?: string
+          scheduled_date?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      complements: {
+        Row: {
+          challenge_id: string | null
+          created_at: string | null
+          from_user_email: string | null
+          id: string
+          message: string | null
+          submission_id: string | null
+          to_user_email: string | null
+        }
+        Insert: {
+          challenge_id?: string | null
+          created_at?: string | null
+          from_user_email?: string | null
+          id?: string
+          message?: string | null
+          submission_id?: string | null
+          to_user_email?: string | null
+        }
+        Update: {
+          challenge_id?: string | null
+          created_at?: string | null
+          from_user_email?: string | null
+          id?: string
+          message?: string | null
+          submission_id?: string | null
+          to_user_email?: string | null
+        }
+        Relationships: []
+      }
+      reminders: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: number
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: number
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: number
+        }
+        Relationships: []
+      }
+      submissions: {
+        Row: {
+          challenge_id: string | null
+          created_at: string | null
+          handle: string | null
+          id: string
+          name: string | null
+          submission_link: string | null
+          user_email: string | null
+        }
+        Insert: {
+          challenge_id?: string | null
+          created_at?: string | null
+          handle?: string | null
+          id?: string
+          name?: string | null
+          submission_link?: string | null
+          user_email?: string | null
+        }
+        Update: {
+          challenge_id?: string | null
+          created_at?: string | null
+          handle?: string | null
+          id?: string
+          name?: string | null
+          submission_link?: string | null
+          user_email?: string | null
+        }
+        Relationships: []
+      }
+      streaks: {
+        Row: {
+          current_streak: number | null
+          id: string
+          last_submission_date: string | null
+          longest_streak: number | null
+          points: number | null
+          user_email: string | null
+        }
+        Insert: {
+          current_streak?: number | null
+          id?: string
+          last_submission_date?: string | null
+          longest_streak?: number | null
+          points?: number | null
+          user_email?: string | null
+        }
+        Update: {
+          current_streak?: number | null
+          id?: string
+          last_submission_date?: string | null
+          longest_streak?: number | null
+          points?: number | null
+          user_email?: string | null
+        }
+        Relationships: []
+      }
+      blueprints: {
+        Row: any
+        Insert: any
+        Update: any
+        Relationships: any
+      }
+      blueprint_tasks: {
+        Row: any
+        Insert: any
+        Update: any
+        Relationships: any
+      }
+      user_blueprint_enrollments: {
+        Row: any
+        Insert: any
+        Update: any
+        Relationships: any
+      }
+      user_blueprint_task_progress: {
+        Row: any
+        Insert: any
+        Update: any
+        Relationships: any
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}

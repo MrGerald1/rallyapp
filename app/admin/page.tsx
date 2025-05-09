@@ -3,228 +3,374 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ChallengeForm } from "./components/challenge-form"
-import { Calendar, Edit, Trash, Check } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useChallengeStore } from "@/lib/store"
-import type { Challenge } from "@/lib/store"
+import { toast } from "sonner"
+import { Calendar, Edit, Trash, Check, Loader2 } from "lucide-react"
 
 export default function AdminPage() {
-  const {
-    challenges,
-    currentChallenge,
-    setCurrentChallenge,
-    deleteChallenge,
-    fetchChallenges,
-    fetchCurrentChallenge,
-    isLoading,
-    error,
-  } = useChallengeStore()
-
-  const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null)
+  const { challenges, currentChallenge, fetchChallenges, fetchCurrentChallenge, isLoading, error } = useChallengeStore()
+  const [editingChallenge, setEditingChallenge] = useState<any>(null)
   const [isCreating, setIsCreating] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [password, setPassword] = useState("")
-  const [loginError, setLoginError] = useState("")
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    category: "",
+    difficulty: "",
+    hashtag: "",
+    quote: "",
+    author: "",
+    scheduled_date: new Date().toISOString().split("T")[0],
+  })
+  const [actionLoading, setActionLoading] = useState(false)
+  const [processingChallengeId, setProcessingChallengeId] = useState<string | null>(null)
 
   useEffect(() => {
-    // Check if already authenticated in this session
-    const auth = sessionStorage.getItem("rally-admin-auth")
-    if (auth === "true") {
-      setIsAuthenticated(true)
-      fetchChallenges()
-      fetchCurrentChallenge()
-    }
+    fetchChallenges()
+    fetchCurrentChallenge()
   }, [fetchChallenges, fetchCurrentChallenge])
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleEditChallenge = (challenge: any) => {
+    setEditingChallenge(challenge)
+    setFormData({
+      title: challenge.title,
+      description: challenge.description,
+      category: challenge.category,
+      difficulty: challenge.difficulty,
+      hashtag: challenge.hashtag,
+      quote: challenge.quote,
+      author: challenge.author,
+      scheduled_date: challenge.scheduled_date,
+    })
+    setIsCreating(false)
+  }
+
+  const handleCreateNew = () => {
+    setEditingChallenge(null)
+    setFormData({
+      title: "",
+      description: "",
+      category: "",
+      difficulty: "",
+      hashtag: "",
+      quote: "",
+      author: "",
+      scheduled_date: new Date().toISOString().split("T")[0],
+    })
+    setIsCreating(true)
+  }
+
+  const handleCancel = () => {
+    setEditingChallenge(null)
+    setIsCreating(false)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password === "admin456") {
-      setIsAuthenticated(true)
-      sessionStorage.setItem("rally-admin-auth", "true")
-      fetchChallenges()
-      fetchCurrentChallenge()
-    } else {
-      setLoginError("Invalid password")
+    setActionLoading(true)
+
+    try {
+      if (editingChallenge) {
+        // Update existing challenge
+        const response = await fetch(`/api/challenges/${editingChallenge.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to update challenge")
+        }
+
+        toast.success("Challenge updated successfully")
+      } else {
+        // Create new challenge
+        const response = await fetch("/api/challenges", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to create challenge")
+        }
+
+        toast.success("Challenge created successfully")
+      }
+
+      // Refresh challenges
+      await fetchChallenges()
+      await fetchCurrentChallenge()
+
+      // Reset form
+      setEditingChallenge(null)
+      setIsCreating(false)
+    } catch (error: any) {
+      console.error("Error saving challenge:", error)
+      toast.error(error.message || "Failed to save challenge")
+    } finally {
+      setActionLoading(false)
     }
   }
 
-  const handleSetCurrent = (challenge: Challenge) => {
-    setCurrentChallenge(challenge)
+  const handleSetCurrent = async (challenge: any) => {
+    try {
+      setActionLoading(true)
+      setProcessingChallengeId(challenge.id)
+
+      const response = await fetch("/api/challenges/current", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: challenge.id }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to set current challenge")
+      }
+
+      toast.success("Current challenge updated successfully")
+      await fetchCurrentChallenge()
+    } catch (error: any) {
+      console.error("Error setting current challenge:", error)
+      toast.error(error.message || "Failed to set current challenge")
+    } finally {
+      setActionLoading(false)
+      setProcessingChallengeId(null)
+    }
   }
 
   const handleDeleteChallenge = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this challenge?")) {
-      await deleteChallenge(id)
+    if (!confirm("Are you sure you want to delete this challenge?")) {
+      return
+    }
+
+    try {
+      setActionLoading(true)
+      setProcessingChallengeId(id)
+
+      const response = await fetch(`/api/challenges/${id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete challenge")
+      }
+
+      toast.success("Challenge deleted successfully")
+      await fetchChallenges()
+    } catch (error: any) {
+      console.error("Error deleting challenge:", error)
+      toast.error(error.message || "Failed to delete challenge")
+    } finally {
+      setActionLoading(false)
+      setProcessingChallengeId(null)
     }
   }
 
-  // Login form
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background">
-        <SiteHeader />
-        <main className="container mx-auto flex max-w-md flex-col items-center justify-center px-4 py-8">
-          <Card className="w-full p-6">
-            <h1 className="mb-4 text-2xl font-bold">Admin Login</h1>
-            <form onSubmit={handleLogin} className="space-y-4">
-              {loginError && <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">{loginError}</div>}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Password</label>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-              </div>
-              <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800">
-                Login
-              </Button>
-            </form>
-          </Card>
-        </main>
-      </div>
-    )
-  }
-
-  if (isLoading && challenges.length === 0) {
-    return (
-      <div className="min-h-screen bg-background">
-        <SiteHeader />
-        <main className="container mx-auto max-w-4xl px-4 py-6">
-          <div className="flex flex-col items-center justify-center space-y-4 py-10">
-            <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-            <p className="text-muted-foreground">Loading challenges...</p>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
-  if (error && challenges.length === 0) {
-    return (
-      <div className="min-h-screen bg-background">
-        <SiteHeader />
-        <main className="container mx-auto max-w-4xl px-4 py-6">
-          <div className="text-center">
-            <p className="text-red-500">Error: {error}</p>
-            <Button onClick={() => fetchChallenges()} className="mt-4">
-              Try Again
-            </Button>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
+    <div className="p-4 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <h2 className="text-2xl font-bold">Manage Challenges</h2>
+        {!isCreating && !editingChallenge && <Button onClick={handleCreateNew}>Create New Challenge</Button>}
+      </div>
 
-      <main className="container mx-auto max-w-4xl px-4 py-6">
-        <div className="mb-6 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
-          <div>
-            <h1 className="text-xl font-bold sm:text-2xl md:text-3xl">Manage Challenges</h1>
-            <p className="text-sm text-muted-foreground sm:text-base">Create and manage daily challenges for users</p>
-          </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            {!isCreating && !editingChallenge && (
-              <Button onClick={() => setIsCreating(true)} className="w-full sm:w-auto">
-                <span className="mr-2">+</span> Add Challenge
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => {
-                sessionStorage.removeItem("rally-admin-auth")
-                setIsAuthenticated(false)
-              }}
-              className="w-full sm:w-auto"
-            >
-              Logout
-            </Button>
-          </div>
+      {(isCreating || editingChallenge) && (
+        <Card className="mb-8">
+          <CardContent className="p-4 md:p-6">
+            <h3 className="text-xl font-bold mb-4">{editingChallenge ? "Edit Challenge" : "Create New Challenge"}</h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Title</label>
+                  <Input name="title" value={formData.title} onChange={handleInputChange} required />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Hashtag</label>
+                  <Input name="hashtag" value={formData.hashtag} onChange={handleInputChange} required />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Description</label>
+                <Textarea name="description" value={formData.description} onChange={handleInputChange} required />
+              </div>
+
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Category</label>
+                  <Select value={formData.category} onValueChange={(value) => handleSelectChange("category", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Wellness">Wellness</SelectItem>
+                      <SelectItem value="Mindfulness">Mindfulness</SelectItem>
+                      <SelectItem value="Creativity">Creativity</SelectItem>
+                      <SelectItem value="Adventure">Adventure</SelectItem>
+                      <SelectItem value="Food">Food</SelectItem>
+                      <SelectItem value="Learning">Learning</SelectItem>
+                      <SelectItem value="Arts">Arts</SelectItem>
+                      <SelectItem value="Social">Social</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Difficulty</label>
+                  <Select
+                    value={formData.difficulty}
+                    onValueChange={(value) => handleSelectChange("difficulty", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select difficulty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Easy">Easy</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="Hard">Hard</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Scheduled Date</label>
+                  <Input
+                    type="date"
+                    name="scheduled_date"
+                    value={formData.scheduled_date}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Quote</label>
+                <Textarea name="quote" value={formData.quote} onChange={handleInputChange} required />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Author</label>
+                <Input name="author" value={formData.author} onChange={handleInputChange} required />
+              </div>
+
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 justify-end">
+                <Button type="button" variant="outline" onClick={handleCancel}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={actionLoading}>
+                  {actionLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {editingChallenge ? "Updating..." : "Creating..."}
+                    </>
+                  ) : (
+                    <>{editingChallenge ? "Update" : "Create"} Challenge</>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-
-        {(isCreating || editingChallenge) && (
-          <Card className="mb-6 p-4 sm:p-5">
-            <h2 className="mb-4 text-lg font-bold sm:text-xl">
-              {editingChallenge ? "Edit Challenge" : "Create New Challenge"}
-            </h2>
-            <ChallengeForm
-              challenge={editingChallenge || undefined}
-              onCancel={() => {
-                setIsCreating(false)
-                setEditingChallenge(null)
-              }}
-            />
-          </Card>
-        )}
-
+      ) : error ? (
+        <div className="text-center py-12">
+          <p className="text-red-500">{error}</p>
+          <Button className="mt-4" onClick={() => fetchChallenges()}>
+            Try Again
+          </Button>
+        </div>
+      ) : (
         <div className="space-y-4">
           {challenges.map((challenge) => (
-            <Card
-              key={challenge.id}
-              className={`p-4 sm:p-5 ${currentChallenge?.id === challenge.id ? "border-2 border-primary" : ""}`}
-            >
-              <div className="flex flex-col space-y-4 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
-                <div className="space-y-3 sm:pr-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-bold sm:text-xl">{challenge.title}</h2>
-                    <Badge>{challenge.category}</Badge>
-                    <Badge variant="outline">{challenge.difficulty}</Badge>
-                    {currentChallenge?.id === challenge.id && <Badge variant="secondary">Current Challenge</Badge>}
+            <Card key={challenge.id} className={currentChallenge?.id === challenge.id ? "border-primary" : ""}>
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-3 mb-4 sm:mb-0 sm:pr-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-bold">{challenge.title}</h3>
+                      <Badge>{challenge.category}</Badge>
+                      <Badge variant="outline">{challenge.difficulty}</Badge>
+                      {currentChallenge?.id === challenge.id && <Badge variant="secondary">Current Challenge</Badge>}
+                    </div>
+                    <p className="text-muted-foreground">{challenge.description}</p>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      <span>{challenge.scheduled_date}</span>
+                      <span className="ml-2 text-primary">{challenge.hashtag}</span>
+                    </div>
+                    <blockquote className="border-l-2 border-primary/20 pl-4">
+                      <p className="italic">"{challenge.quote}"</p>
+                      <footer className="mt-1 text-sm text-muted-foreground">— {challenge.author}</footer>
+                    </blockquote>
                   </div>
-                  <p className="text-sm text-muted-foreground sm:text-base">{challenge.description}</p>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
-                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>{challenge.scheduled_date}</span>
-                    <span className="text-primary">{challenge.hashtag}</span>
-                  </div>
-                  <blockquote className="border-l-2 border-primary/20 pl-3 text-sm sm:pl-4 sm:text-base">
-                    <p className="italic">"{challenge.quote}"</p>
-                    <footer className="mt-1 text-xs text-muted-foreground sm:text-sm">— {challenge.author}</footer>
-                  </blockquote>
-                </div>
-                <div className="flex flex-row gap-2 self-start sm:flex-col">
-                  {currentChallenge?.id !== challenge.id && (
+                  <div className="flex flex-row sm:flex-col space-x-2 sm:space-x-0 sm:space-y-2">
+                    {currentChallenge?.id !== challenge.id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSetCurrent(challenge)}
+                        disabled={actionLoading && processingChallengeId === challenge.id}
+                      >
+                        {actionLoading && processingChallengeId === challenge.id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="mr-2 h-4 w-4" />
+                        )}
+                        Set Current
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleSetCurrent(challenge)}
-                      disabled={isLoading}
-                      className="flex-1 sm:flex-none"
+                      onClick={() => handleEditChallenge(challenge)}
+                      disabled={actionLoading && processingChallengeId === challenge.id}
                     >
-                      <Check className="mr-2 h-4 w-4" />
-                      <span className="hidden sm:inline">Set as Current</span>
-                      <span className="sm:hidden">Set Current</span>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
                     </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingChallenge(challenge)}
-                    className="flex-1 sm:flex-none"
-                  >
-                    <Edit className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Edit</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteChallenge(challenge.id)}
-                    className="flex-1 text-destructive hover:text-destructive sm:flex-none"
-                    disabled={isLoading}
-                  >
-                    <Trash className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Delete</span>
-                  </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteChallenge(challenge.id)}
+                      disabled={actionLoading && processingChallengeId === challenge.id}
+                      className="text-red-500 hover:text-red-600"
+                    >
+                      <Trash className="mr-2 h-4 w-4" />
+                      Delete
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              </CardContent>
             </Card>
           ))}
         </div>
-      </main>
+      )}
     </div>
   )
 }
