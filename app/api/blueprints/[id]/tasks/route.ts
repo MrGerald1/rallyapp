@@ -4,11 +4,14 @@ import { createServerSupabaseClient } from "@/lib/supabase"
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const blueprintId = params.id
+
+    if (!blueprintId) {
+      return NextResponse.json({ error: "Missing blueprint ID" }, { status: 400 })
+    }
+
     const supabase = createServerSupabaseClient()
 
-    console.log(`Fetching tasks for blueprint with ID: ${blueprintId}`)
-
-    // Fetch tasks for the blueprint without authentication requirement
+    // Get tasks for this blueprint
     const { data, error } = await supabase
       .from("blueprint_tasks")
       .select("*")
@@ -20,9 +23,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data || [])
+    return NextResponse.json(data)
   } catch (error: any) {
-    console.error("Error in GET /api/blueprints/[id]/tasks:", error)
+    console.error("Unexpected error in GET /api/blueprints/[id]/tasks:", error)
     return NextResponse.json({ error: "Failed to fetch blueprint tasks" }, { status: 500 })
   }
 }
@@ -30,60 +33,18 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const blueprintId = params.id
-    const supabase = createServerSupabaseClient()
+
+    if (!blueprintId) {
+      return NextResponse.json({ error: "Missing blueprint ID" }, { status: 400 })
+    }
+
     const taskData = await request.json()
+    taskData.blueprint_id = blueprintId
 
-    // Validate required fields
-    const requiredFields = ["day_number", "title", "instructions"]
-    for (const field of requiredFields) {
-      if (!taskData[field]) {
-        return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 })
-      }
-    }
+    const supabase = createServerSupabaseClient()
 
-    // Check if blueprint exists
-    const { data: blueprint, error: blueprintError } = await supabase
-      .from("blueprints")
-      .select("id")
-      .eq("id", blueprintId)
-      .single()
-
-    if (blueprintError) {
-      console.error("Error checking blueprint existence:", blueprintError)
-      if (blueprintError.code === "PGRST116") {
-        return NextResponse.json({ error: "Blueprint not found" }, { status: 404 })
-      }
-      return NextResponse.json({ error: blueprintError.message }, { status: 500 })
-    }
-
-    // Check if day number is already used
-    const { data: existingTask, error: existingTaskError } = await supabase
-      .from("blueprint_tasks")
-      .select("id")
-      .eq("blueprint_id", blueprintId)
-      .eq("day_number", taskData.day_number)
-      .maybeSingle()
-
-    if (existingTask) {
-      return NextResponse.json({ error: `Task for day ${taskData.day_number} already exists` }, { status: 400 })
-    }
-
-    // Insert task
-    const { data, error } = await supabase
-      .from("blueprint_tasks")
-      .insert({
-        blueprint_id: blueprintId,
-        day_number: taskData.day_number,
-        title: taskData.title,
-        instructions: taskData.instructions,
-        skill_focus: taskData.skill_focus,
-        examples: taskData.examples,
-        story: taskData.story,
-        resources: taskData.resources || [],
-        share_prompt: taskData.share_prompt || false,
-      })
-      .select()
-      .single()
+    // Create task
+    const { data, error } = await supabase.from("blueprint_tasks").insert(taskData).select().single()
 
     if (error) {
       console.error("Error creating blueprint task:", error)
@@ -92,7 +53,25 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     return NextResponse.json(data)
   } catch (error: any) {
-    console.error("Error in POST /api/blueprints/[id]/tasks:", error)
+    console.error("Unexpected error in POST /api/blueprints/[id]/tasks:", error)
     return NextResponse.json({ error: "Failed to create blueprint task" }, { status: 500 })
   }
+}
+
+// Add OPTIONS method to handle preflight requests
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS, HEAD",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400",
+    },
+  })
+}
+
+// Add HEAD method to handle HEAD requests
+export async function HEAD() {
+  return new NextResponse(null, { status: 200 })
 }

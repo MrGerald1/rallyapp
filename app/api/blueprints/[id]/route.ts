@@ -3,6 +3,11 @@ import { createServerSupabaseClient } from "@/lib/supabase"
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
+    // Handle the special case for "active"
+    if (params.id === "active") {
+      return NextResponse.json({ error: "Use /api/blueprints/active endpoint instead" }, { status: 400 })
+    }
+
     const supabase = createServerSupabaseClient()
 
     // Fetch blueprint
@@ -83,14 +88,15 @@ export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: {
-      Allow: "GET, PATCH, PUT, DELETE, OPTIONS, HEAD",
+      "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, PATCH, PUT, DELETE, OPTIONS, HEAD",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400",
     },
   })
 }
 
 // Add HEAD method to handle HEAD requests
-export async function HEAD(request: Request, { params }: { params: { id: string } }) {
+export async function HEAD() {
   return new NextResponse(null, { status: 200 })
 }

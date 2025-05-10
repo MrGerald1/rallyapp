@@ -89,14 +89,15 @@ export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: {
-      Allow: "GET, OPTIONS, HEAD",
+      "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, OPTIONS, HEAD",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400",
     },
   })
 }
 
 // Add HEAD method to handle HEAD requests
-export async function HEAD(request: NextRequest, { params }: { params: { id: string } }) {
+export async function HEAD() {
   return new NextResponse(null, { status: 200 })
 }
