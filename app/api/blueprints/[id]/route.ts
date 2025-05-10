@@ -77,3 +77,20 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     return NextResponse.json({ error: "Failed to delete blueprint" }, { status: 500 })
   }
 }
+
+// Add OPTIONS method to handle preflight requests
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      Allow: "GET, PATCH, PUT, DELETE, OPTIONS, HEAD",
+      "Access-Control-Allow-Methods": "GET, PATCH, PUT, DELETE, OPTIONS, HEAD",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  })
+}
+
+// Add HEAD method to handle HEAD requests
+export async function HEAD(request: Request, { params }: { params: { id: string } }) {
+  return new NextResponse(null, { status: 200 })
+}

@@ -16,7 +16,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Add this to prevent client-side access to environment variables
+  // Only expose necessary environment variables to the client
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,

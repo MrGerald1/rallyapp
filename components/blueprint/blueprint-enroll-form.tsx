@@ -187,7 +187,7 @@ export function BlueprintEnrollForm({ blueprintId }: BlueprintEnrollFormProps) {
                 </li>
               </ol>
             </div> */}
-            <Button
+            {/* <Button
               className="group relative w-full overflow-hidden rounded-full bg-[#EF6C36] py-6 text-lg font-bold text-white transition-all hover:bg-[#EF6C36]/90"
               onClick={() => {
                 window.open(whatsappLink, "_blank")
@@ -196,7 +196,7 @@ export function BlueprintEnrollForm({ blueprintId }: BlueprintEnrollFormProps) {
             >
               <span className="relative z-10">Join Community</span>
               <span className="absolute bottom-0 left-0 h-full w-0 bg-white/20 transition-all duration-300 group-hover:w-full"></span>
-            </Button>
+            </Button> */}
           </div>
         </DialogContent>
       </Dialog>

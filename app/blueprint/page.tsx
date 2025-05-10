@@ -10,18 +10,26 @@ import type { Blueprint } from "@/lib/types"
 
 export default function BlueprintPage() {
   const [activeBlueprint, setActiveBlueprint] = useState<Blueprint | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Add useEffect to fetch the active blueprint
   useEffect(() => {
     async function fetchActiveBlueprint() {
+      setLoading(true)
+      setError(null)
       try {
         const response = await fetch("/api/blueprints/active")
-        if (response.ok) {
-          const data = await response.json()
-          setActiveBlueprint(data)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch active blueprint: ${response.status}`)
         }
-      } catch (error) {
-        console.error("Error fetching active blueprint:", error)
+        const data = await response.json()
+        setActiveBlueprint(data)
+      } catch (err) {
+        console.error("Error fetching active blueprint:", err)
+        setError("Failed to load blueprint data")
+      } finally {
+        setLoading(false)
       }
     }
 
@@ -112,17 +120,8 @@ export default function BlueprintPage() {
           </h2>
 
           <div className="space-y-8 text-lg">
-            {/* <p className="relative pl-6 text-xl">
-              <span className="absolute left-0 top-0 text-2xl font-bold text-[#EF6C36]">"</span>
-              You've got the ideas. <span className="font-bold">Brilliant ones.</span> The kind that wakes you up at 3
-              AM. You've researched and maybe even have endless browser tabs open.
-            </p> */}
-
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <div className="group relative overflow-hidden rounded-xl border-2 border-transparent bg-gray-100 p-6 transition-all duration-300 hover:border-[#EF6C36] hover:bg-gray-50">
-                {/* <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#EF6C36]/10 text-[#EF6C36] group-hover:bg-[#EF6C36]/20">
-                  <span className="text-xl font-bold">01</span>
-                </div> */}
                 <h3 className="mb-2 text-xl font-bold">
                   You're the <span className="text-[#EF6C36]">Creator</span>
                 </h3>
@@ -130,9 +129,6 @@ export default function BlueprintPage() {
               </div>
 
               <div className="group relative overflow-hidden rounded-xl border-2 border-transparent bg-gray-100 p-6 transition-all duration-300 hover:border-[#EF6C36] hover:bg-gray-50">
-                {/* <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#EF6C36]/10 text-[#EF6C36] group-hover:bg-[#EF6C36]/20">
-                  <span className="text-xl font-bold">02</span>
-                </div> */}
                 <h3 className="mb-2 text-xl font-bold">
                   You're the <span className="text-[#EF6C36]">Techie</span>
                 </h3>
@@ -140,25 +136,17 @@ export default function BlueprintPage() {
               </div>
 
               <div className="group relative overflow-hidden rounded-xl border-2 border-transparent bg-gray-100 p-6 transition-all duration-300 hover:border-[#EF6C36] hover:bg-gray-50">
-                {/* <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#EF6C36]/10 text-[#EF6C36] group-hover:bg-[#EF6C36]/20">
-                  <span className="text-xl font-bold">03</span>
-                </div> */}
                 <h3 className="mb-2 text-xl font-bold">
                   You're the <span className="text-[#EF6C36]">Curious One</span>
                 </h3>
                 <p>eager to craft that brand, service, music or store.</p>
-              </div>              
+              </div>
             </div>
 
             <p className="text-xl">
-              You've researched, planned, tweaked... but then tomorrow becomes next week, and next week becomes "one day". At the end of the day... <span className="font-bold italic">it's still an idea</span>😪.
+              You've researched, planned, tweaked... but then tomorrow becomes next week, and next week becomes "one
+              day". At the end of the day... <span className="font-bold italic">it's still an idea</span>😪.
             </p>
-
-            {/* <div className="rounded-xl bg-black p-8 text-center text-white">
-              <p className="text-2xl font-bold">
-                Stuck. We know the friction is real. You know you need to just start, but how?
-              </p>
-            </div> */}
           </div>
         </div>
       </section>
@@ -229,29 +217,6 @@ export default function BlueprintPage() {
         </div>
       </section>
 
-      {/* Who Is This For Section */}
-      {/* <section className="bg-white py-20">
-        <div className="container mx-auto max-w-4xl px-4">
-          <div className="mb-12 flex items-center">
-            <div className="h-1 flex-grow bg-black"></div>
-            <h2 className="mx-4 text-sm font-bold uppercase tracking-widest">Who Is This For</h2>
-            <div className="h-1 flex-grow bg-black"></div>
-          </div>
-
-          <h2 className="mb-12 text-center font-heading text-4xl font-black uppercase sm:text-5xl">
-            If You're Ready to <span className="text-[#EF6C36]">Actually Start</span>...This Is For You.
-            <span className="block mt-2">This Is For You.</span>
-          </h2>
-
-          <div className="col-span-full rounded-xl bg-black p-6 text-center text-white">
-            <p className="text-xl font-bold">
-              Basically, if you have an idea you're obsessed with and you're ready for action, learning, and finding
-              your people – hop in.
-            </p>
-          </div>
-        </div>
-      </section> */}
-
       {/* The Outcome Section */}
       <section className="bg-white py-20">
         <div className="absolute -left-32 bottom-0 h-64 w-64 rounded-full bg-[#EF6C36]/10 blur-3xl"></div>
@@ -277,33 +242,6 @@ export default function BlueprintPage() {
               <span className="font-bold text-[#EF6C36]">You proved you could start.</span>
             </p>
           </div>
-
-          {/* <div className="grid gap-4 md:grid-cols-3">
-            <div className="flex items-center rounded-xl bg-white p-6 shadow-md">
-              <CheckCircle className="mr-4 h-8 w-8 flex-shrink-0 text-[#EF6C36]" />
-              <p className="text-lg font-medium">Real momentum built.</p>
-            </div>
-
-            <div className="flex items-center rounded-xl bg-white p-6 shadow-md">
-              <CheckCircle className="mr-4 h-8 w-8 flex-shrink-0 text-[#EF6C36]" />
-              <p className="text-lg font-medium">Your little idea launched.</p>
-            </div>
-
-            <div className="flex items-center rounded-xl bg-white p-6 shadow-md">
-              <CheckCircle className="mr-4 h-8 w-8 flex-shrink-0 text-[#EF6C36]" />
-              <p className="text-lg font-medium">Practical starting skills gained.</p>
-            </div>
-
-            <div className="flex items-center rounded-xl bg-white p-6 shadow-md">
-              <CheckCircle className="mr-4 h-8 w-8 flex-shrink-0 text-[#EF6C36]" />
-              <p className="text-lg font-medium">Connected with fellow builders.</p>
-            </div>
-
-            <div className="col-span-2 flex items-center rounded-xl bg-white p-6 shadow-md">
-              <CheckCircle className="mr-4 h-8 w-8 flex-shrink-0 text-[#EF6C36]" />
-              <p className="text-lg font-medium">Validated concept (or smart pivot).</p>
-            </div>
-          </div> */}
         </div>
       </section>
 
@@ -322,15 +260,25 @@ export default function BlueprintPage() {
           </h2>
 
           <p className="mx-auto mb-12 max-w-2xl text-xl">
-            The 26-Day Blueprint is <span className="font-bold text-[#EF6C36]">FREE</span>. Applications open May 22nd to close on <span className="font-bold text-[#EF6C36]">June 6th </span>2025. Spots are limited. Don't overthink it.
+            The 26-Day Blueprint is <span className="font-bold text-[#EF6C36]">FREE</span>. Applications open May 22nd
+            to close on <span className="font-bold text-[#EF6C36]">June 6th </span>2025. Spots are limited. Don't
+            overthink it.
           </p>
 
           <div className="relative mx-auto max-w-2xl rounded-2xl bg-white p-8 text-black shadow-2xl">
             <div className="absolute -right-4 -top-4 rounded-full bg-[#EF6C36] px-4 py-2 text-sm font-bold text-white animate-pulse-border">
               FREE
             </div>
-            {/* Find where BlueprintEnrollForm is rendered and update it */}
-            <BlueprintEnrollForm blueprintId={activeBlueprint?.id || ""} />
+            {/* Only render the form if we have an active blueprint */}
+            {loading ? (
+              <div className="py-8 text-center">Loading blueprint information...</div>
+            ) : error ? (
+              <div className="py-8 text-center text-red-500">{error}</div>
+            ) : activeBlueprint ? (
+              <BlueprintEnrollForm blueprintId={activeBlueprint.id} />
+            ) : (
+              <div className="py-8 text-center">No active blueprint available at this time.</div>
+            )}
           </div>
 
           <p className="mt-8 text-sm text-gray-400">

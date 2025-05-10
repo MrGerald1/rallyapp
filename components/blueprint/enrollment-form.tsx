@@ -253,7 +253,7 @@ export function EnrollmentForm() {
                 <li>Share your progress with the community</li>
               </ol>
             </div>
-            <Button
+            {/* <Button
               className="w-full"
               onClick={() => {
                 window.open(WHATSAPP_COMMUNITY_LINK, "_blank")
@@ -262,7 +262,7 @@ export function EnrollmentForm() {
               }}
             >
               Join Community
-            </Button>
+            </Button> */}
           </div>
         </DialogContent>
       </Dialog>
