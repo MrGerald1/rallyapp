@@ -10,9 +10,6 @@ import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
-// WhatsApp community link
-const WHATSAPP_COMMUNITY_LINK = "https://chat.whatsapp.com/E4eiorCbLb04GyqqKiB2M9"
-
 export function EnrollmentForm() {
   const [formData, setFormData] = useState({
     name: "",
@@ -25,34 +22,89 @@ export function EnrollmentForm() {
   const [blueprintId, setBlueprintId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [alreadyEnrolled, setAlreadyEnrolled] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Fetch the active blueprint ID when the component mounts
     const fetchActiveBlueprintId = async () => {
       try {
-        const response = await fetch("/api/blueprints/active")
+        setIsLoading(true)
+        setError(null)
+        console.log("Fetching active blueprint...")
+
+        const response = await fetch("/api/blueprints/active", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            // Add cache busting
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        })
+
         if (!response.ok) {
-          throw new Error("Failed to fetch active blueprint")
+          console.error("Error response status:", response.status)
+          const errorText = await response.text()
+          console.error("Error response text:", errorText)
+
+          let errorData
+          try {
+            errorData = JSON.parse(errorText)
+          } catch (e) {
+            errorData = { error: `Failed to fetch active blueprint: ${response.status}` }
+          }
+
+          throw new Error(errorData.error || "Failed to fetch active blueprint")
         }
+
         const data = await response.json()
+        console.log("Fetched active blueprint:", data)
+
+        if (!data || !data.id) {
+          console.warn("No active blueprint found")
+          setError("No active blueprint available")
+          return
+        }
+
         setBlueprintId(data.id)
 
         // Check if user is already enrolled
         const email = localStorage.getItem("rally_user_email")
         if (email) {
+          console.log(`Checking enrollment for email: ${email}`)
+
           const checkResponse = await fetch(
             `/api/blueprints/${data.id}/check-enrollment?email=${encodeURIComponent(email)}`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                // Add cache busting
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                Pragma: "no-cache",
+                Expires: "0",
+              },
+            },
           )
-          const checkData = await checkResponse.json()
-          setAlreadyEnrolled(checkData.enrolled)
 
-          if (checkData.enrolled) {
-            toast.info("You're already enrolled in this blueprint!")
+          if (!checkResponse.ok) {
+            console.error("Error checking enrollment:", checkResponse.status)
+            // Continue without enrollment check
+          } else {
+            const checkData = await checkResponse.json()
+            console.log("Enrollment check result:", checkData)
+            setAlreadyEnrolled(checkData.enrolled)
+
+            if (checkData.enrolled) {
+              toast.info("You're already enrolled in this blueprint!")
+            }
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching active blueprint:", error)
-        toast.error("Could not load enrollment information")
+        setError(error.message || "Could not load enrollment information")
+        toast.error("Could not load enrollment information: " + (error.message || "Unknown error"))
       } finally {
         setIsLoading(false)
       }
@@ -75,6 +127,7 @@ export function EnrollmentForm() {
     }
 
     setIsSubmitting(true)
+    setError(null)
 
     try {
       console.log("Submitting enrollment to blueprint:", blueprintId)
@@ -82,8 +135,33 @@ export function EnrollmentForm() {
       // Check if user is already enrolled
       const checkResponse = await fetch(
         `/api/blueprints/${blueprintId}/check-enrollment?email=${encodeURIComponent(formData.email)}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            // Add cache busting
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        },
       )
+
+      if (!checkResponse.ok) {
+        console.error("Error checking enrollment:", checkResponse.status)
+        const errorText = await checkResponse.text()
+        console.error("Error response:", errorText)
+        let errorData
+        try {
+          errorData = JSON.parse(errorText)
+        } catch (e) {
+          errorData = { error: `Failed to check enrollment: ${checkResponse.status}` }
+        }
+        throw new Error(errorData.error || "Failed to check enrollment")
+      }
+
       const checkData = await checkResponse.json()
+      console.log("Enrollment check result:", checkData)
 
       if (checkData.enrolled) {
         setAlreadyEnrolled(true)
@@ -97,6 +175,7 @@ export function EnrollmentForm() {
         return
       }
 
+      console.log("Submitting enrollment form data:", formData)
       const response = await fetch(`/api/blueprints/${blueprintId}/enroll`, {
         method: "POST",
         headers: {
@@ -105,8 +184,19 @@ export function EnrollmentForm() {
         body: JSON.stringify(formData),
       })
 
-      const data = await response.json()
-      console.log("Enrollment response:", data)
+      console.log("Enrollment response status:", response.status)
+      const responseText = await response.text()
+      console.log("Enrollment response text:", responseText)
+
+      let data
+      try {
+        data = JSON.parse(responseText)
+      } catch (e) {
+        console.error("Error parsing JSON response:", e)
+        throw new Error("Invalid response from server")
+      }
+
+      console.log("Enrollment response data:", data)
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to enroll")
@@ -118,8 +208,10 @@ export function EnrollmentForm() {
 
       // Show success dialog
       setShowSuccessDialog(true)
+      toast.success("Successfully enrolled in blueprint!")
     } catch (error: any) {
       console.error("Enrollment error:", error)
+      setError(error.message || "Failed to enroll. Please try again.")
       toast.error(error.message || "Failed to enroll. Please try again.")
     } finally {
       setIsSubmitting(false)
@@ -141,6 +233,11 @@ export function EnrollmentForm() {
         <div className="flex justify-center items-center py-8">
           <Loader2 className="h-8 w-8 animate-spin" />
           <span className="ml-2">Loading enrollment form...</span>
+        </div>
+      ) : error ? (
+        <div className="text-center py-6">
+          <p className="text-red-500 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
         </div>
       ) : !blueprintId ? (
         <div className="text-center py-6">
@@ -253,16 +350,15 @@ export function EnrollmentForm() {
                 <li>Share your progress with the community</li>
               </ol>
             </div>
-            {/* <Button
+            <Button
               className="w-full"
               onClick={() => {
-                window.open(WHATSAPP_COMMUNITY_LINK, "_blank")
                 setShowSuccessDialog(false)
                 if (!alreadyEnrolled) resetForm()
               }}
             >
-              Join Community
-            </Button> */}
+              Close
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

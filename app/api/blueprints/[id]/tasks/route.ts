@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase"
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const blueprintId = params.id
+    console.log(`GET /api/blueprints/${blueprintId}/tasks: Starting request`)
 
     if (!blueprintId) {
       return NextResponse.json({ error: "Missing blueprint ID" }, { status: 400 })
@@ -12,6 +13,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const supabase = createServerSupabaseClient()
 
     // Get tasks for this blueprint
+    console.log(`Querying blueprint_tasks table for blueprint_id: ${blueprintId}`)
     const { data, error } = await supabase
       .from("blueprint_tasks")
       .select("*")
@@ -23,16 +25,18 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    console.log(`GET /api/blueprints/${blueprintId}/tasks: Found ${data?.length || 0} tasks`)
+    return NextResponse.json(data || [])
   } catch (error: any) {
-    console.error("Unexpected error in GET /api/blueprints/[id]/tasks:", error)
-    return NextResponse.json({ error: "Failed to fetch blueprint tasks" }, { status: 500 })
+    console.error(`Error in GET /api/blueprints/[id]/tasks:`, error)
+    return NextResponse.json({ error: error.message || "Failed to fetch blueprint tasks" }, { status: 500 })
   }
 }
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const blueprintId = params.id
+    console.log(`POST /api/blueprints/${blueprintId}/tasks: Starting request`)
 
     if (!blueprintId) {
       return NextResponse.json({ error: "Missing blueprint ID" }, { status: 400 })
@@ -44,6 +48,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const supabase = createServerSupabaseClient()
 
     // Create task
+    console.log(`Creating new task for blueprint_id: ${blueprintId}`, taskData)
     const { data, error } = await supabase.from("blueprint_tasks").insert(taskData).select().single()
 
     if (error) {
@@ -51,10 +56,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    console.log(`POST /api/blueprints/${blueprintId}/tasks: Created task successfully`, data)
     return NextResponse.json(data)
   } catch (error: any) {
-    console.error("Unexpected error in POST /api/blueprints/[id]/tasks:", error)
-    return NextResponse.json({ error: "Failed to create blueprint task" }, { status: 500 })
+    console.error(`Error in POST /api/blueprints/[id]/tasks:`, error)
+    return NextResponse.json({ error: error.message || "Failed to create blueprint task" }, { status: 500 })
   }
 }
 

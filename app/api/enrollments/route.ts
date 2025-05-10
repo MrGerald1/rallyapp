@@ -3,38 +3,32 @@ import { createServerSupabaseClient } from "@/lib/supabase"
 
 export async function GET(request: Request) {
   try {
+    console.log("GET /api/enrollments: Starting request")
     const supabase = createServerSupabaseClient()
-    const { searchParams } = new URL(request.url)
 
-    // Get query parameters
-    const email = searchParams.get("email")
-    const blueprintId = searchParams.get("blueprint_id")
-
-    let query = supabase.from("user_blueprint_enrollments").select(`
-      *,
-      blueprints (*)
-    `)
-
-    // Apply filters if provided
-    if (email) {
-      query = query.eq("user_email", email)
-    }
-
-    if (blueprintId) {
-      query = query.eq("blueprint_id", blueprintId)
-    }
-
-    const { data, error } = await query
+    // Get all enrollments with blueprint details
+    console.log("Querying user_blueprint_enrollments table")
+    const { data: enrollments, error } = await supabase
+      .from("user_blueprint_enrollments")
+      .select(`
+        *,
+        blueprint:blueprints (
+          id,
+          title
+        )
+      `)
+      .order("start_date", { ascending: false })
 
     if (error) {
       console.error("Error fetching enrollments:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    console.log(`GET /api/enrollments: Found ${enrollments?.length || 0} enrollments`)
+    return NextResponse.json({ enrollments: enrollments || [] })
   } catch (error: any) {
-    console.error("Unexpected error in GET /api/enrollments:", error)
-    return NextResponse.json({ error: "Failed to fetch enrollments" }, { status: 500 })
+    console.error("Error in GET /api/enrollments:", error)
+    return NextResponse.json({ error: error.message || "Failed to fetch enrollments" }, { status: 500 })
   }
 }
 

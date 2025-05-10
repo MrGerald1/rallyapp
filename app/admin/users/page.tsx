@@ -6,26 +6,60 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Search, User } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
 
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setIsLoading(true)
-        const response = await fetch("/api/enrollments")
+        setError(null)
+
+        console.log("Fetching enrollments...")
+        const response = await fetch("/api/enrollments", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            // Add cache busting
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        })
 
         if (!response.ok) {
-          throw new Error("Failed to fetch users")
+          console.error("Error response status:", response.status)
+          const errorText = await response.text()
+          console.error("Error response text:", errorText)
+
+          let errorData
+          try {
+            errorData = JSON.parse(errorText)
+          } catch (e) {
+            errorData = { error: `Failed to fetch users: ${response.status}` }
+          }
+
+          throw new Error(errorData.error || `Failed to fetch users: ${response.status}`)
         }
 
         const data = await response.json()
-        setUsers(data.enrollments || [])
-      } catch (error) {
+        console.log("Fetched enrollments:", data)
+
+        if (!data || !data.enrollments) {
+          console.warn("No enrollments data returned:", data)
+          setUsers([])
+        } else {
+          setUsers(data.enrollments || [])
+        }
+      } catch (error: any) {
         console.error("Error fetching users:", error)
+        setError(error.message || "Failed to fetch users")
+        toast.error("Failed to load users: " + (error.message || "Unknown error"))
       } finally {
         setIsLoading(false)
       }
@@ -34,7 +68,9 @@ export default function UsersPage() {
     fetchUsers()
   }, [])
 
-  const filteredUsers = users.filter((user) => user.user_email.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredUsers = users.filter(
+    (user) => user.user_email && user.user_email.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
   return (
     <div>
@@ -57,12 +93,21 @@ export default function UsersPage() {
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
+      ) : error ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-red-500 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>Try Again</Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-4">
           {filteredUsers.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <p className="text-muted-foreground">No users found</p>
+                <p className="text-muted-foreground">
+                  {searchTerm ? "No users found matching your search" : "No users found"}
+                </p>
               </CardContent>
             </Card>
           ) : (
