@@ -1,17 +1,9 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
-
-export const dynamic = "force-dynamic"
-export const revalidate = 0
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string; taskId: string } }) {
   try {
-    if (!params.id || !params.taskId) {
-      return NextResponse.json({ error: "Blueprint ID and Task ID are required" }, { status: 400 })
-    }
-
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createClient()
 
     const { data: task, error } = await supabase
       .from("blueprint_tasks")
@@ -21,53 +13,61 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       .single()
 
     if (error) {
-      console.error(`Error fetching task ${params.taskId}:`, error)
+      console.error("Error fetching task:", error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 })
     }
 
     return NextResponse.json({ task })
   } catch (error) {
-    console.error(`Unexpected error in task GET route:`, error)
-    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })
+    console.error("Error in GET /api/blueprints/[id]/tasks/[taskId]:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string; taskId: string } }) {
   try {
-    if (!params.id || !params.taskId) {
-      return NextResponse.json({ error: "Blueprint ID and Task ID are required" }, { status: 400 })
-    }
-
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createClient()
     const body = await request.json()
 
     const { data: task, error } = await supabase
       .from("blueprint_tasks")
-      .update(body)
+      .update({
+        day_number: body.day_number,
+        title: body.title,
+        instructions: body.instructions,
+        skill_focus: body.skill_focus,
+        examples: body.examples,
+        story: body.story,
+        resources: body.resources,
+        share_prompt: body.share_prompt,
+        requires_submission: body.requires_submission || false,
+        submission_instructions: body.submission_instructions,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", params.taskId)
       .eq("blueprint_id", params.id)
       .select()
       .single()
 
     if (error) {
-      console.error(`Error updating task ${params.taskId}:`, error)
-      return NextResponse.json({ error: "Failed to update task" }, { status: 500 })
+      console.error("Error updating task:", error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ task })
   } catch (error) {
-    console.error(`Unexpected error in task PATCH route:`, error)
-    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })
+    console.error("Error in PATCH /api/blueprints/[id]/tasks/[taskId]:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string; taskId: string } }) {
   try {
-    if (!params.id || !params.taskId) {
-      return NextResponse.json({ error: "Blueprint ID and Task ID are required" }, { status: 400 })
-    }
-
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createClient()
 
     const { error } = await supabase
       .from("blueprint_tasks")
@@ -76,13 +76,24 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       .eq("blueprint_id", params.id)
 
     if (error) {
-      console.error(`Error deleting task ${params.taskId}:`, error)
-      return NextResponse.json({ error: "Failed to delete task" }, { status: 500 })
+      console.error("Error deleting task:", error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error(`Unexpected error in task DELETE route:`, error)
-    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })
+    console.error("Error in DELETE /api/blueprints/[id]/tasks/[taskId]:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, PATCH, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  })
 }

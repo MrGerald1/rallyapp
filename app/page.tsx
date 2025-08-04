@@ -39,7 +39,7 @@ export default function Home() {
             <Button
               size="lg"
               variant="outline"
-              className="rounded-full border-white text-black hover:bg-white/10 px-8 py-6 text-lg font-bold"
+              className="rounded-full border-white text-black hover:bg-white/10 text-white px-8 py-6 text-lg font-bold"
               asChild
             >
               <Link href="/blueprint">26-Day Blueprint</Link>
