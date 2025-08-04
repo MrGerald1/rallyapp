@@ -2,46 +2,45 @@
 
 import { Button } from "@/components/ui/button"
 import { SiteHeader } from "@/components/site-header"
-import { Zap, Star, Users, Rocket, Play } from "lucide-react"
-import { BlueprintEnrollForm } from "@/components/blueprint/blueprint-enroll-form"
+import { Zap, Star, Users, Rocket } from "lucide-react"
+// import { BlueprintEnrollForm } from "@/components/blueprint/blueprint-enroll-form"
 import { SiteFooter } from "@/components/site-footer"
-import { useState, useEffect } from "react"
-import type { Blueprint } from "@/lib/types"
+// import type { Blueprint } from "@/lib/types"
 
 export default function BlueprintPage() {
-  const [activeBlueprint, setActiveBlueprint] = useState<Blueprint | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // const [activeBlueprint, setActiveBlueprint] = useState<Blueprint | null>(null)
+  // const [loading, setLoading] = useState(true)
+  // const [error, setError] = useState<string | null>(null)
 
   // Add useEffect to fetch the active blueprint
-  useEffect(() => {
-    async function fetchActiveBlueprint() {
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetch("/api/blueprints/active")
+  // useEffect(() => {
+  //   async function fetchActiveBlueprint() {
+  //     setLoading(true)
+  //     setError(null)
+  //     try {
+  //       const response = await fetch("/api/blueprints/active")
 
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError("No active blueprint available at this time")
-            setLoading(false)
-            return
-          }
-          throw new Error(`Failed to fetch active blueprint: ${response.status}`)
-        }
+  //       if (!response.ok) {
+  //         if (response.status === 404) {
+  //           setError("No active blueprint available at this time")
+  //           setLoading(false)
+  //           return
+  //         }
+  //         throw new Error(`Failed to fetch active blueprint: ${response.status}`)
+  //       }
 
-        const data = await response.json()
-        setActiveBlueprint(data)
-      } catch (err) {
-        console.error("Error fetching active blueprint:", err)
-        setError("Failed to load blueprint data")
-      } finally {
-        setLoading(false)
-      }
-    }
+  //       const data = await response.json()
+  //       setActiveBlueprint(data)
+  //     } catch (err) {
+  //       console.error("Error fetching active blueprint:", err)
+  //       setError("Failed to load blueprint data")
+  //     } finally {
+  //       setLoading(false)
+  //     }
+  //   }
 
-    fetchActiveBlueprint()
-  }, [])
+  //   fetchActiveBlueprint()
+  // }, [])
 
   const scrollToEnroll = () => {
     const enrollSection = document.getElementById("enroll")
@@ -391,11 +390,28 @@ export default function BlueprintPage() {
             overthink it.
           </p>
 
-          <div className="relative mx-auto max-w-2xl rounded-2xl bg-white p-8 text-black shadow-2xl">
+          <div className="relative mx-auto max-w-4xl rounded-2xl bg-white p-8 text-black shadow-2xl">
             <div className="absolute -right-4 -top-4 rounded-full bg-[#EF6C36] px-4 py-2 text-sm font-bold text-white animate-pulse-border">
               FREE
             </div>
-            {/* Only render the form if we have an active blueprint */}
+
+            {/* Embedded Google Form */}
+            <div className="w-full overflow-hidden rounded-lg">
+              <iframe
+                src="https://docs.google.com/forms/d/e/1FAIpQLSeRLPQoAYD4ycxNMIoU2472RYSm8fOR1WC8zo3PUdRtqs-TUg/viewform?embedded=true"
+                width="100%"
+                height="1200"
+                frameBorder="0"
+                marginHeight="0"
+                marginWidth="0"
+                className="w-full"
+                title="26-Day Blueprint Enrollment Form"
+              >
+                Loading…
+              </iframe>
+            </div>
+
+            {/* Previous enrollment form - commented out for future reference
             {loading ? (
               <div className="py-8 text-center">Loading blueprint information...</div>
             ) : error ? (
@@ -405,6 +421,7 @@ export default function BlueprintPage() {
             ) : (
               <div className="py-8 text-center">No active blueprint available at this time.</div>
             )}
+            */}
           </div>
 
           <p className="mt-8 text-sm text-gray-400">
