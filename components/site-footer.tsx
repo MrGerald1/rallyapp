@@ -25,7 +25,7 @@ export function SiteFooter() {
                 <Instagram className="h-5 w-5" />
                 <span className="sr-only">Instagram</span>
               </a>
-              <a href="https://www.x.com/start_rally" className="text-gray-300 hover:text-white">
+              <a href="https://www.x.com/startrally_" className="text-gray-300 hover:text-white">
                 <Twitter className="h-5 w-5" />
                 <span className="sr-only">X (Formerly Twitter)</span>
               </a>
