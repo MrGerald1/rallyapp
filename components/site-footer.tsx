@@ -17,22 +17,22 @@ export function SiteFooter() {
               community of like-minded individuals.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-300 hover:text-white">
+              {/* <a href="#" className="text-gray-300 hover:text-white">
                 <Facebook className="h-5 w-5" />
                 <span className="sr-only">Facebook</span>
-              </a>
-              <a href="#" className="text-gray-300 hover:text-white">
+              </a> */}
+              <a href="https://www.instagram.com/startrally_" className="text-gray-300 hover:text-white">
                 <Instagram className="h-5 w-5" />
                 <span className="sr-only">Instagram</span>
               </a>
-              <a href="#" className="text-gray-300 hover:text-white">
+              <a href="https://www.x.com/start_rally" className="text-gray-300 hover:text-white">
                 <Twitter className="h-5 w-5" />
-                <span className="sr-only">Twitter</span>
+                <span className="sr-only">X (Formerly Twitter)</span>
               </a>
-              <a href="#" className="text-gray-300 hover:text-white">
+              {/* <a href="#" className="text-gray-300 hover:text-white">
                 <Youtube className="h-5 w-5" />
                 <span className="sr-only">YouTube</span>
-              </a>
+              </a> */}
             </div>
           </div>
 
@@ -103,8 +103,8 @@ export function SiteFooter() {
             <ul className="space-y-2 text-sm">
               <li className="text-gray-300">
                 Email:{" "}
-                <a href="mailto:hello@rally.ng" className="hover:text-white hover:underline">
-                  hello@rally.ng
+                <a href="mailto:startrally1@gmail.com" className="hover:text-white hover:underline">
+                  Get in touch.
                 </a>
               </li>
               <li className="text-gray-300">

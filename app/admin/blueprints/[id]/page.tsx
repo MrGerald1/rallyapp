@@ -24,23 +24,19 @@ export default function EditBlueprintPage({ params }: { params: { id: string } }
 
         // If we're creating a new blueprint, don't try to fetch
         if (params.id === "new") {
-          setBlueprint({
-            id: "",
-            title: "",
-            description: "",
-            duration_days: 26,
-            start_date: new Date().toISOString(),
-            whatsapp_link: "",
-            created_at: "",
-            updated_at: "",
-            is_active: false,
-          })
+          setBlueprint(null)
           setIsLoading(false)
           return
         }
 
         console.log(`Fetching blueprint with ID: ${params.id}`)
-        const response = await fetch(`/api/blueprints/${params.id}`)
+        const response = await fetch(`/api/blueprints/${params.id}`, {
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        })
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
@@ -50,7 +46,7 @@ export default function EditBlueprintPage({ params }: { params: { id: string } }
 
         const data = await response.json()
         console.log("Fetched blueprint:", data)
-        setBlueprint(data)
+        setBlueprint(data.blueprint || data)
       } catch (error: any) {
         console.error("Error fetching blueprint:", error)
         setError(error.message || "Failed to load blueprint")
@@ -80,7 +76,7 @@ export default function EditBlueprintPage({ params }: { params: { id: string } }
     )
   }
 
-  if (error || !blueprint) {
+  if (error) {
     return (
       <div>
         <Button variant="ghost" className="mb-6" asChild>
@@ -91,7 +87,7 @@ export default function EditBlueprintPage({ params }: { params: { id: string } }
         </Button>
 
         <div className="flex flex-col items-center justify-center py-12">
-          <p className="text-red-500">{error || "Blueprint not found"}</p>
+          <p className="text-red-500">{error}</p>
           <Button className="mt-4" onClick={() => router.push("/admin/blueprints")}>
             Back to Blueprints
           </Button>
@@ -114,7 +110,7 @@ export default function EditBlueprintPage({ params }: { params: { id: string } }
           <CardTitle>{params.id === "new" ? "Create Blueprint" : "Edit Blueprint"}</CardTitle>
         </CardHeader>
         <CardContent>
-          <BlueprintForm blueprint={blueprint} isEdit />
+          <BlueprintForm blueprint={blueprint} isEdit={params.id !== "new"} />
         </CardContent>
       </Card>
     </div>

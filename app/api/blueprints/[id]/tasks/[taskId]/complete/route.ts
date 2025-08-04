@@ -1,127 +1,116 @@
-import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
+import { type NextRequest, NextResponse } from "next/server"
 
-export async function POST(request: Request, { params }: { params: { id: string; taskId: string } }) {
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
+export async function POST(request: NextRequest, { params }: { params: { id: string; taskId: string } }) {
   try {
-    const { id: blueprintId, taskId } = params
-
-    if (!blueprintId || !taskId) {
-      return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
+    if (!params.id || !params.taskId) {
+      return NextResponse.json({ error: "Blueprint ID and Task ID are required" }, { status: 400 })
     }
 
-    const { enrollmentId, submission } = await request.json()
+    const supabase = createRouteHandlerClient({ cookies })
 
-    if (!enrollmentId) {
-      return NextResponse.json({ error: "Missing enrollment ID" }, { status: 400 })
+    // Verify authentication
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    const supabase = createServerSupabaseClient()
+    const userId = session.user.id
 
-    // Check if task exists
-    const { data: task, error: taskError } = await supabase
-      .from("blueprint_tasks")
-      .select("*")
-      .eq("blueprint_id", blueprintId)
-      .eq("id", taskId)
+    // Check if the user is enrolled in the blueprint
+    const { data: enrollment, error: enrollmentError } = await supabase
+      .from("blueprint_enrollments")
+      .select("id")
+      .eq("blueprint_id", params.id)
+      .eq("user_id", userId)
       .single()
 
-    if (taskError) {
-      console.error("Error fetching task:", taskError)
+    if (enrollmentError || !enrollment) {
+      console.error(`User ${userId} not enrolled in blueprint ${params.id}:`, enrollmentError)
+      return NextResponse.json({ error: "You must be enrolled in this blueprint to complete tasks" }, { status: 403 })
+    }
+
+    // Check if the task exists
+    const { data: task, error: taskError } = await supabase
+      .from("blueprint_tasks")
+      .select("id, points")
+      .eq("id", params.taskId)
+      .eq("blueprint_id", params.id)
+      .single()
+
+    if (taskError || !task) {
+      console.error(`Task ${params.taskId} not found in blueprint ${params.id}:`, taskError)
       return NextResponse.json({ error: "Task not found" }, { status: 404 })
     }
 
-    // Check if enrollment exists
-    const { data: enrollment, error: enrollmentError } = await supabase
-      .from("user_blueprint_enrollments")
-      .select("*")
-      .eq("id", enrollmentId)
-      .eq("blueprint_id", blueprintId)
+    // Check if the task is already completed
+    const { data: existingCompletion, error: completionError } = await supabase
+      .from("blueprint_task_completions")
+      .select("id")
+      .eq("task_id", params.taskId)
+      .eq("user_id", userId)
       .single()
 
-    if (enrollmentError) {
-      console.error("Error fetching enrollment:", enrollmentError)
-      return NextResponse.json({ error: "Enrollment not found" }, { status: 404 })
+    if (existingCompletion) {
+      // Task already completed, return success
+      return NextResponse.json({
+        success: true,
+        message: "Task already completed",
+        completion: existingCompletion,
+      })
     }
 
-    // Check if progress entry exists
-    const { data: existingProgress, error: progressError } = await supabase
-      .from("user_blueprint_task_progress")
-      .select("*")
-      .eq("enrollment_id", enrollmentId)
-      .eq("task_id", taskId)
-      .maybeSingle()
-
-    if (progressError) {
-      console.error("Error fetching progress:", progressError)
-      return NextResponse.json({ error: "Failed to check progress" }, { status: 500 })
+    // Parse request body for optional notes
+    let notes = null
+    try {
+      const body = await request.json()
+      notes = body.notes || null
+    } catch (e) {
+      // No body or invalid JSON, continue without notes
     }
 
-    let progressData
+    // Mark task as completed
+    const { data: completion, error: insertError } = await supabase
+      .from("blueprint_task_completions")
+      .insert({
+        task_id: params.taskId,
+        user_id: userId,
+        enrollment_id: enrollment.id,
+        notes: notes,
+        points_earned: task.points,
+      })
+      .select()
+      .single()
 
-    if (existingProgress) {
-      // Update existing progress
-      const { data, error } = await supabase
-        .from("user_blueprint_task_progress")
-        .update({
-          completed: true,
-          completed_at: new Date().toISOString(),
-          submission_data: submission || null,
-        })
-        .eq("id", existingProgress.id)
-        .select()
-        .single()
-
-      if (error) {
-        console.error("Error updating progress:", error)
-        return NextResponse.json({ error: "Failed to update progress" }, { status: 500 })
-      }
-
-      progressData = data
-    } else {
-      // Create new progress entry
-      const { data, error } = await supabase
-        .from("user_blueprint_task_progress")
-        .insert({
-          enrollment_id: enrollmentId,
-          task_id: taskId,
-          completed: true,
-          completed_at: new Date().toISOString(),
-          submission_data: submission || null,
-        })
-        .select()
-        .single()
-
-      if (error) {
-        console.error("Error creating progress:", error)
-        return NextResponse.json({ error: "Failed to create progress" }, { status: 500 })
-      }
-
-      progressData = data
+    if (insertError) {
+      console.error(`Error marking task ${params.taskId} as completed:`, insertError)
+      return NextResponse.json({ error: "Failed to mark task as completed" }, { status: 500 })
     }
 
-    // Update enrollment current_day if needed
-    if (task.day_number >= enrollment.current_day) {
-      const { error: updateError } = await supabase
-        .from("user_blueprint_enrollments")
-        .update({
-          current_day: task.day_number + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", enrollmentId)
+    // Update user's total points in the enrollment
+    const { error: updateError } = await supabase.rpc("update_enrollment_points", {
+      p_enrollment_id: enrollment.id,
+    })
 
-      if (updateError) {
-        console.error("Error updating enrollment:", updateError)
-        // Continue even if this fails
-      }
+    if (updateError) {
+      console.error(`Error updating points for enrollment ${enrollment.id}:`, updateError)
+      // Continue despite the error, as the task is already marked as completed
     }
 
     return NextResponse.json({
       success: true,
-      progress: progressData,
+      message: "Task marked as completed",
+      completion,
     })
-  } catch (error: any) {
-    console.error("Error completing task:", error)
-    return NextResponse.json({ error: "Failed to complete task" }, { status: 500 })
+  } catch (error) {
+    console.error(`Unexpected error in complete task route:`, error)
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })
   }
 }
 
@@ -130,15 +119,19 @@ export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS, HEAD",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Max-Age": "86400",
+      "Access-Control-Allow-Origin": "*",
     },
   })
 }
 
-// Add HEAD method to handle HEAD requests
+// Add HEAD method for health checks
 export async function HEAD() {
-  return new NextResponse(null, { status: 200 })
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
 }

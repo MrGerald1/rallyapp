@@ -1,83 +1,115 @@
-import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
+import { type NextRequest, NextResponse } from "next/server"
 
-export async function GET(request: Request) {
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const email = searchParams.get("email")
+    const supabase = createRouteHandlerClient({ cookies })
 
-    if (!email) {
-      return NextResponse.json({ error: "Email parameter is required" }, { status: 400 })
+    // Verify authentication
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    const supabase = createServerSupabaseClient()
+    const userId = session.user.id
 
-    // Get all enrollments for this user
+    // Add cache control headers
+    const headers = new Headers({
+      "Cache-Control": "no-store, max-age=0",
+      "Content-Type": "application/json",
+    })
+
+    // Get all active enrollments for the user
     const { data: enrollments, error: enrollmentsError } = await supabase
-      .from("user_blueprint_enrollments")
+      .from("blueprint_enrollments")
       .select(`
-        *,
-        blueprints (*)
+        id, 
+        status, 
+        enrolled_at, 
+        completed_at, 
+        total_points,
+        blueprints(id, title, description, image_url, estimated_days, category, difficulty)
       `)
-      .eq("user_email", email)
-      .order("created_at", { ascending: false })
+      .eq("user_id", userId)
+      .order("enrolled_at", { ascending: false })
 
     if (enrollmentsError) {
-      console.error("Error fetching enrollments:", enrollmentsError)
-      return NextResponse.json({ error: "Failed to fetch enrollments" }, { status: 500 })
+      console.error(`Error fetching enrollments for user ${userId}:`, enrollmentsError)
+      return NextResponse.json({ error: "Failed to fetch enrollments" }, { status: 500, headers })
     }
 
     if (!enrollments || enrollments.length === 0) {
-      return NextResponse.json({ enrollments: [] })
+      return NextResponse.json({ enrollments: [] }, { headers })
     }
 
-    // Get progress for all enrollments
-    const enrollmentIds = enrollments.map((e) => e.id)
-    const { data: progress, error: progressError } = await supabase
-      .from("user_blueprint_task_progress")
-      .select("*")
-      .in("enrollment_id", enrollmentIds)
+    // Get all blueprint IDs
+    const blueprintIds = enrollments.map((enrollment) => enrollment.blueprints.id)
 
-    if (progressError) {
-      console.error("Error fetching progress:", progressError)
-      return NextResponse.json({ error: "Failed to fetch progress" }, { status: 500 })
-    }
-
-    // Get all tasks for the blueprints
-    const blueprintIds = enrollments.map((e) => e.blueprint_id)
+    // Get all tasks for these blueprints
     const { data: tasks, error: tasksError } = await supabase
       .from("blueprint_tasks")
-      .select("*")
+      .select("id, blueprint_id")
       .in("blueprint_id", blueprintIds)
 
     if (tasksError) {
-      console.error("Error fetching tasks:", tasksError)
-      return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 })
+      console.error(`Error fetching tasks for blueprints:`, tasksError)
+      return NextResponse.json({ error: "Failed to fetch blueprint tasks" }, { status: 500, headers })
     }
 
-    // Process enrollments to include progress and tasks
-    const processedEnrollments = enrollments.map((enrollment) => {
-      const enrollmentProgress = progress.filter((p) => p.enrollment_id === enrollment.id)
-      const blueprintTasks = tasks.filter((t) => t.blueprint_id === enrollment.blueprint_id)
+    // Group tasks by blueprint ID
+    const tasksByBlueprint = tasks.reduce((acc, task) => {
+      if (!acc[task.blueprint_id]) {
+        acc[task.blueprint_id] = []
+      }
+      acc[task.blueprint_id].push(task.id)
+      return acc
+    }, {})
 
-      const completedTasks = enrollmentProgress.filter((p) => p.completed).length
+    // Get all task completions for the user
+    const { data: completions, error: completionsError } = await supabase
+      .from("blueprint_task_completions")
+      .select("task_id, completed_at")
+      .eq("user_id", userId)
+
+    if (completionsError) {
+      console.error(`Error fetching task completions for user ${userId}:`, completionsError)
+      return NextResponse.json({ error: "Failed to fetch task completions" }, { status: 500, headers })
+    }
+
+    // Create a set of completed task IDs
+    const completedTaskIds = new Set(completions.map((completion) => completion.task_id))
+
+    // Calculate progress for each enrollment
+    const enrollmentsWithProgress = enrollments.map((enrollment) => {
+      const blueprintId = enrollment.blueprints.id
+      const blueprintTasks = tasksByBlueprint[blueprintId] || []
       const totalTasks = blueprintTasks.length
-      const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+
+      let completedTasks = 0
+      if (totalTasks > 0) {
+        completedTasks = blueprintTasks.filter((taskId) => completedTaskIds.has(taskId)).length
+      }
+
+      const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
 
       return {
         ...enrollment,
-        progress: {
-          completed: completedTasks,
-          total: totalTasks,
-          percentage: progressPercentage,
-        },
+        progress,
+        completedTasks,
+        totalTasks,
       }
     })
 
-    return NextResponse.json({ enrollments: processedEnrollments })
-  } catch (error: any) {
-    console.error("Error fetching blueprint progress:", error)
-    return NextResponse.json({ error: "Failed to fetch blueprint progress" }, { status: 500 })
+    return NextResponse.json({ enrollments: enrollmentsWithProgress }, { headers })
+  } catch (error) {
+    console.error(`Unexpected error in blueprint progress route:`, error)
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })
   }
 }
 
@@ -86,15 +118,19 @@ export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS, HEAD",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Max-Age": "86400",
+      "Access-Control-Allow-Origin": "*",
     },
   })
 }
 
-// Add HEAD method to handle HEAD requests
+// Add HEAD method for health checks
 export async function HEAD() {
-  return new NextResponse(null, { status: 200 })
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
 }

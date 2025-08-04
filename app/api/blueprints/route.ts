@@ -1,76 +1,69 @@
-import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
+import { type NextRequest, NextResponse } from "next/server"
 
-export async function GET(request: Request) {
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
+export async function GET(request: NextRequest) {
   try {
-    const supabase = createServerSupabaseClient()
-    const { searchParams } = new URL(request.url)
+    const supabase = createRouteHandlerClient({ cookies })
 
-    // Get query parameters
-    const active = searchParams.get("active")
-
-    let query = supabase.from("blueprints").select("*")
-
-    // Apply filters if provided
-    if (active === "true") {
-      query = query.eq("is_active", true)
-    }
-
-    // Order by created_at descending
-    query = query.order("created_at", { ascending: false })
-
-    const { data, error } = await query
+    // Get all blueprints
+    const { data, error } = await supabase.from("blueprints").select("*").order("created_at", { ascending: false })
 
     if (error) {
       console.error("Error fetching blueprints:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to fetch blueprints" }, { status: 500 })
     }
 
-    return NextResponse.json(data)
-  } catch (error: any) {
-    console.error("Unexpected error in GET /api/blueprints:", error)
-    return NextResponse.json({ error: "Failed to fetch blueprints" }, { status: 500 })
+    return NextResponse.json({ blueprints: data })
+  } catch (error) {
+    console.error("Unexpected error in blueprints route:", error)
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerSupabaseClient()
-    const blueprintData = await request.json()
+    const supabase = createRouteHandlerClient({ cookies })
 
-    // Add timestamps
-    const now = new Date().toISOString()
-    blueprintData.created_at = now
-    blueprintData.updated_at = now
+    // Parse request body
+    const body = await request.json()
 
-    const { data, error } = await supabase.from("blueprints").insert(blueprintData).select().single()
+    // Create new blueprint
+    const { data, error } = await supabase
+      .from("blueprints")
+      .insert({
+        title: body.title,
+        description: body.description,
+        duration_days: body.duration_days,
+        start_date: body.start_date,
+        whatsapp_link: body.whatsapp_link,
+        is_active: body.is_active,
+      })
+      .select()
+      .single()
 
     if (error) {
       console.error("Error creating blueprint:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: "Failed to create blueprint" }, { status: 500 })
     }
 
-    return NextResponse.json(data)
-  } catch (error: any) {
-    console.error("Unexpected error in POST /api/blueprints:", error)
-    return NextResponse.json({ error: "Failed to create blueprint" }, { status: 500 })
+    return NextResponse.json({ blueprint: data })
+  } catch (error) {
+    console.error("Unexpected error in blueprint creation route:", error)
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })
   }
 }
 
-// Add OPTIONS method to handle preflight requests
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS, HEAD",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Max-Age": "86400",
+      "Access-Control-Allow-Origin": "*",
     },
   })
-}
-
-// Add HEAD method to handle HEAD requests
-export async function HEAD() {
-  return new NextResponse(null, { status: 200 })
 }

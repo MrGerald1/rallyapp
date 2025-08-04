@@ -50,3 +50,32 @@ export interface BlueprintTaskProgress {
   created_at: string
   updated_at: string
 }
+
+export interface EnrollmentFormData {
+  user_email: string
+  project_idea: string
+  phone_number: string
+}
+
+export interface EnrollmentWithBlueprint extends BlueprintEnrollment {
+  blueprint: Blueprint
+}
+
+export interface TaskWithProgress extends BlueprintTask {
+  progress?: BlueprintTaskProgress
+}
+
+export interface BlueprintStats {
+  total_enrollments: number
+  active_enrollments: number
+  completed_enrollments: number
+  completion_rate: number
+  average_progress: number
+  task_completion_rates: {
+    task_id: string
+    task_title: string
+    day_number: number
+    completion_count: number
+    completion_rate: number
+  }[]
+}

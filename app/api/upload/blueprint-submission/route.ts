@@ -3,16 +3,26 @@ import { createServerSupabaseClient } from "@/lib/supabase"
 
 export async function POST(request: Request) {
   try {
+    console.log("POST /api/upload/blueprint-submission: Starting request")
     const formData = await request.formData()
+
     const file = formData.get("file") as File
     const taskId = formData.get("taskId") as string
     const enrollmentId = formData.get("enrollmentId") as string
 
-    if (!file || !taskId || !enrollmentId) {
-      return NextResponse.json({ error: "Missing required fields: file, taskId, enrollmentId" }, { status: 400 })
+    if (!file) {
+      return NextResponse.json({ error: "File is required" }, { status: 400 })
     }
 
-    // Check file size (limit to 10MB)
+    if (!taskId) {
+      return NextResponse.json({ error: "Task ID is required" }, { status: 400 })
+    }
+
+    if (!enrollmentId) {
+      return NextResponse.json({ error: "Enrollment ID is required" }, { status: 400 })
+    }
+
+    // Validate file size (limit to 10MB)
     const maxSize = 10 * 1024 * 1024 // 10MB
     if (file.size > maxSize) {
       return NextResponse.json({ error: "File size exceeds the 10MB limit" }, { status: 400 })
@@ -20,27 +30,28 @@ export async function POST(request: Request) {
 
     const supabase = createServerSupabaseClient()
 
-    // Get the enrollment to verify it exists
+    // Verify the enrollment exists
     const { data: enrollment, error: enrollmentError } = await supabase
       .from("user_blueprint_enrollments")
-      .select("*")
+      .select("id, blueprint_id")
       .eq("id", enrollmentId)
       .single()
 
     if (enrollmentError) {
-      console.error("Error fetching enrollment:", enrollmentError)
+      console.error(`Error verifying enrollment ${enrollmentId}:`, enrollmentError)
       return NextResponse.json({ error: "Enrollment not found" }, { status: 404 })
     }
 
-    // Get the task to verify it exists
+    // Verify the task exists
     const { data: task, error: taskError } = await supabase
       .from("blueprint_tasks")
-      .select("*")
+      .select("id")
       .eq("id", taskId)
+      .eq("blueprint_id", enrollment.blueprint_id)
       .single()
 
     if (taskError) {
-      console.error("Error fetching task:", taskError)
+      console.error(`Error verifying task ${taskId}:`, taskError)
       return NextResponse.json({ error: "Task not found" }, { status: 404 })
     }
 
@@ -57,25 +68,27 @@ export async function POST(request: Request) {
 
     if (uploadError) {
       console.error("Error uploading file:", uploadError)
-      return NextResponse.json({ error: "Failed to upload file" }, { status: 500 })
+      return NextResponse.json({ error: uploadError.message }, { status: 500 })
     }
 
     // Get the public URL
     const { data: publicUrlData } = supabase.storage.from("submissions").getPublicUrl(filePath)
 
-    const publicUrl = publicUrlData.publicUrl
+    console.log("POST /api/upload/blueprint-submission: Uploaded file successfully", {
+      path: filePath,
+      url: publicUrlData.publicUrl,
+    })
 
-    // Return the file URL
     return NextResponse.json({
       success: true,
-      url: publicUrl,
+      url: publicUrlData.publicUrl,
       fileName: file.name,
       fileSize: file.size,
       fileType: file.type,
     })
   } catch (error: any) {
-    console.error("Error uploading blueprint submission:", error)
-    return NextResponse.json({ error: "Failed to upload submission" }, { status: 500 })
+    console.error("Error in POST /api/upload/blueprint-submission:", error)
+    return NextResponse.json({ error: error.message || "Failed to upload file" }, { status: 500 })
   }
 }
 

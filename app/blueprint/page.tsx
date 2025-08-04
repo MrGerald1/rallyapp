@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { SiteHeader } from "@/components/site-header"
-import { Zap, Star, Users, Rocket } from "lucide-react"
+import { Zap, Star, Users, Rocket, Play } from "lucide-react"
 import { BlueprintEnrollForm } from "@/components/blueprint/blueprint-enroll-form"
 import { SiteFooter } from "@/components/site-footer"
 import { useState, useEffect } from "react"
@@ -20,9 +20,16 @@ export default function BlueprintPage() {
       setError(null)
       try {
         const response = await fetch("/api/blueprints/active")
+
         if (!response.ok) {
+          if (response.status === 404) {
+            setError("No active blueprint available at this time")
+            setLoading(false)
+            return
+          }
           throw new Error(`Failed to fetch active blueprint: ${response.status}`)
         }
+
         const data = await response.json()
         setActiveBlueprint(data)
       } catch (err) {
@@ -35,6 +42,13 @@ export default function BlueprintPage() {
 
     fetchActiveBlueprint()
   }, [])
+
+  const scrollToEnroll = () => {
+    const enrollSection = document.getElementById("enroll")
+    if (enrollSection) {
+      enrollSection.scrollIntoView({ behavior: "smooth" })
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -73,12 +87,10 @@ export default function BlueprintPage() {
               <Button
                 size="lg"
                 className="group relative overflow-hidden rounded-full bg-[#EF6C36] px-8 py-6 text-lg font-bold text-white transition-all hover:bg-[#EF6C36]/90 hover:shadow-lg animate-pulse-border"
-                asChild
+                onClick={scrollToEnroll}
               >
-                <a href="#enroll">
-                  <span className="relative z-10">Sounds like You - Enrol FREE!</span>
-                  <span className="absolute bottom-0 left-0 h-full w-0 bg-white/20 transition-all duration-300 group-hover:w-full"></span>
-                </a>
+                <span className="relative z-10">Sounds like You - Enrol FREE!</span>
+                <span className="absolute bottom-0 left-0 h-full w-0 bg-white/20 transition-all duration-300 group-hover:w-full"></span>
               </Button>
             </div>
           </div>
@@ -147,6 +159,68 @@ export default function BlueprintPage() {
               You've researched, planned, tweaked... but then tomorrow becomes next week, and next week becomes "one
               day". At the end of the day... <span className="font-bold italic">it's still an idea</span>😪.
             </p>
+
+            {/* CTA for The Real Talk */}
+            <div className="text-center pt-8">
+              <Button
+                size="lg"
+                onClick={scrollToEnroll}
+                className="group relative overflow-hidden rounded-full bg-black px-8 py-6 text-lg font-bold text-white transition-all hover:bg-gray-800 hover:shadow-lg"
+              >
+                <span className="relative z-10">I'm Done Waiting</span>
+                <span className="absolute bottom-0 left-0 h-full w-0 bg-[#EF6C36]/20 transition-all duration-300 group-hover:w-full"></span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Video Section */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#EF6C36] to-[#D55A2A] py-20 text-white">
+        <div className="absolute -left-32 -top-32 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
+        <div className="absolute -right-32 -bottom-32 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
+
+        <div className="container relative z-10 mx-auto max-w-4xl px-4 text-center">
+          <div className="mb-8 inline-block rounded-full bg-white/20 px-4 py-1 text-sm font-bold uppercase tracking-wider">
+            Before You Continue
+          </div>
+
+          <h2 className="mb-6 font-heading text-4xl font-black uppercase sm:text-5xl">
+            Watch <span className="text-black">This</span>
+          </h2>
+
+          <p className="mx-auto mb-12 max-w-2xl text-xl opacity-90">
+            See what the 26-Day Blueprint is really about and why it works.
+          </p>
+
+          <div className="relative mx-auto max-w-4xl">
+            <div className="relative aspect-video overflow-hidden rounded-2xl bg-black shadow-2xl">
+              <iframe
+                src="https://www.youtube.com/embed/TmLtD8aY3x0"
+                title="26-Day Blueprint Explanation"
+                className="absolute inset-0 h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+
+            {/* Play button overlay for visual appeal */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="rounded-full bg-[#EF6C36]/20 p-4 backdrop-blur-sm">
+                <Play className="h-12 w-12 text-white opacity-0 transition-opacity duration-300" />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-12">
+            <Button
+              size="lg"
+              onClick={scrollToEnroll}
+              className="group relative overflow-hidden rounded-full bg-white px-8 py-6 text-lg font-bold text-[#EF6C36] transition-all hover:bg-gray-100 hover:shadow-lg"
+            >
+              <span className="relative z-10">Ready to Start? Let's Go!</span>
+              <span className="absolute bottom-0 left-0 h-full w-0 bg-[#EF6C36]/10 transition-all duration-300 group-hover:w-full"></span>
+            </Button>
           </div>
         </div>
       </section>
@@ -172,11 +246,23 @@ export default function BlueprintPage() {
             project.
           </p>
 
+          {/* CTA for The Blueprint */}
+          {/* <div className="text-center mb-12">
+            <Button
+              size="lg"
+              onClick={scrollToEnroll}
+              className="group relative overflow-hidden rounded-full bg-[#EF6C36] px-8 py-6 text-lg font-bold text-white transition-all hover:bg-[#EF6C36]/90 hover:shadow-lg"
+            >
+              <span className="relative z-10">Start the 26 Days</span>
+              <span className="absolute bottom-0 left-0 h-full w-0 bg-white/20 transition-all duration-300 group-hover:w-full"></span>
+            </Button>
+          </div> */}
+
           <div className="grid gap-8 md:grid-cols-2">
             <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
               <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-[#EF6C36]/10 transition-all duration-300 group-hover:bg-[#EF6C36]/20"></div>
               <h3 className="relative z-10 mb-4 text-2xl font-bold">Any Idea</h3>
-              <p className="relative z-10 text-lg">
+              <p className="relative z-10 text-lg mb-6">
                 Tech, content, music, Instagram store – if it excites you, bring it.
               </p>
             </div>
@@ -184,34 +270,62 @@ export default function BlueprintPage() {
             <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
               <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-[#EF6C36]/10 transition-all duration-300 group-hover:bg-[#EF6C36]/20"></div>
               <h3 className="relative z-10 mb-4 text-2xl font-bold">Your Launch Crew</h3>
-              <p className="relative z-10 text-lg">
+              <p className="relative z-10 text-lg mb-6">
                 Private community access with fellow participants in the trenches. Ask the dumb questions, share
                 wins/fails, get unstuck.
               </p>
+              {/* <Button
+                onClick={scrollToEnroll}
+                className="group/btn relative overflow-hidden rounded-full bg-[#EF6C36] px-6 py-3 text-sm font-bold text-white transition-all hover:bg-[#EF6C36]/90"
+              >
+                <span className="relative z-10">Find Your People</span>
+                <span className="absolute bottom-0 left-0 h-full w-0 bg-white/20 transition-all duration-300 group-hover/btn:w-full"></span>
+              </Button> */}
             </div>
 
             <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
               <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-[#EF6C36]/10 transition-all duration-300 group-hover:bg-[#EF6C36]/20"></div>
               <h3 className="relative z-10 mb-4 text-2xl font-bold">Daily Tasks in Rally</h3>
-              <p className="relative z-10 text-lg">
+              <p className="relative z-10 text-lg mb-6">
                 Log in each day. Get a clear task supported with examples and guidance. Do the work. No excuses.
               </p>
+              {/* <Button
+                onClick={scrollToEnroll}
+                className="group/btn relative overflow-hidden rounded-full bg-black px-6 py-3 text-sm font-bold text-white transition-all hover:bg-gray-800"
+              >
+                <span className="relative z-10">Show Me Today's Task</span>
+                <span className="absolute bottom-0 left-0 h-full w-0 bg-[#EF6C36]/20 transition-all duration-300 group-hover/btn:w-full"></span>
+              </Button> */}
             </div>
 
             <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
               <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-[#EF6C36]/10 transition-all duration-300 group-hover:bg-[#EF6C36]/20"></div>
               <h3 className="relative z-10 mb-4 text-2xl font-bold">Build and Test Your "Toy"</h3>
-              <p className="relative z-10 text-lg">
+              <p className="relative z-10 text-lg mb-6">
                 Build the simplest version of your idea and get real, quick feedback from potential users.
               </p>
+              {/* <Button
+                onClick={scrollToEnroll}
+                className="group/btn relative overflow-hidden rounded-full bg-green-600 px-6 py-3 text-sm font-bold text-white transition-all hover:bg-green-700"
+              >
+                <span className="relative z-10">Test the Idea Fast</span>
+                <span className="absolute bottom-0 left-0 h-full w-0 bg-white/20 transition-all duration-300 group-hover/btn:w-full"></span>
+              </Button> */}
             </div>
 
             <div className="col-span-full group relative overflow-hidden rounded-2xl bg-black p-8 text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
               <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-[#EF6C36]/20 transition-all duration-300 group-hover:bg-[#EF6C36]/30"></div>
               <h3 className="relative z-10 mb-4 text-2xl font-bold">Weekly Check-ins & Demo Day</h3>
-              <p className="relative z-10 text-lg">
+              <p className="relative z-10 text-lg mb-6">
                 Stay accountable with external check-ins and showcase what you built.
               </p>
+              <Button
+                onClick={scrollToEnroll}
+                className="group/btn relative overflow-hidden rounded-full bg-[#EF6C36] px-6 py-3 text-sm font-bold text-white transition-all hover:bg-[#EF6C36]/90"
+              >
+                <span className="relative z-10">I'll Be There</span>
+                <span className="absolute bottom-0 left-0 h-full w-0 bg-white/20 transition-all duration-300 group-hover/btn:w-full"></span>
+              </Button>
             </div>
           </div>
         </div>
@@ -242,6 +356,18 @@ export default function BlueprintPage() {
               <span className="font-bold text-[#EF6C36]">You proved you could start.</span>
             </p>
           </div>
+
+          {/* CTA for The Outcome */}
+          <div className="text-center">
+            <Button
+              size="lg"
+              onClick={scrollToEnroll}
+              className="group relative overflow-hidden rounded-full bg-gradient-to-r from-[#EF6C36] to-[#D55A2A] px-8 py-6 text-lg font-bold text-white transition-all hover:shadow-lg"
+            >
+              <span className="relative z-10">Let's Launch This</span>
+              <span className="absolute bottom-0 left-0 h-full w-0 bg-white/20 transition-all duration-300 group-hover:w-full"></span>
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -260,8 +386,8 @@ export default function BlueprintPage() {
           </h2>
 
           <p className="mx-auto mb-12 max-w-2xl text-xl">
-            The 26-Day Blueprint is <span className="font-bold text-[#EF6C36]">FREE</span>. Applications open May 22nd
-            to close on <span className="font-bold text-[#EF6C36]">June 6th </span>2025. Spots are limited. Don't
+            The 26-Day Blueprint is <span className="font-bold text-[#EF6C36]">FREE</span>. Applications open August 4th
+            to close on <span className="font-bold text-[#EF6C36]">August 31st </span>2025. Spots are limited. Don't
             overthink it.
           </p>
 

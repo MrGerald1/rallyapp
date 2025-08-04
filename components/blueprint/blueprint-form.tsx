@@ -14,7 +14,7 @@ import { toast } from "sonner"
 import type { Blueprint } from "@/lib/models/blueprint"
 
 interface BlueprintFormProps {
-  blueprint?: Blueprint
+  blueprint?: Blueprint | null
   isEdit?: boolean
 }
 
@@ -22,14 +22,25 @@ export function BlueprintForm({ blueprint, isEdit = false }: BlueprintFormProps)
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<Partial<Blueprint>>(
-    blueprint || {
-      title: "",
-      description: "",
-      duration_days: 26,
-      start_date: new Date().toISOString().split("T")[0],
-      whatsapp_link: "",
-      is_active: true,
-    },
+    blueprint
+      ? {
+          title: blueprint.title || "",
+          description: blueprint.description || "",
+          duration_days: blueprint.duration_days || 26,
+          start_date: blueprint.start_date
+            ? new Date(blueprint.start_date).toISOString().split("T")[0]
+            : new Date().toISOString().split("T")[0],
+          whatsapp_link: blueprint.whatsapp_link || "",
+          is_active: blueprint.is_active !== undefined ? blueprint.is_active : true,
+        }
+      : {
+          title: "",
+          description: "",
+          duration_days: 26,
+          start_date: new Date().toISOString().split("T")[0],
+          whatsapp_link: "",
+          is_active: true,
+        },
   )
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -51,7 +62,7 @@ export function BlueprintForm({ blueprint, isEdit = false }: BlueprintFormProps)
     setIsSubmitting(true)
 
     try {
-      const url = isEdit ? `/api/blueprints/${blueprint?.id}` : "/api/blueprints"
+      const url = isEdit && blueprint ? `/api/blueprints/${blueprint.id}` : "/api/blueprints"
       const method = isEdit ? "PATCH" : "POST"
 
       console.log("Submitting form:", { url, method, formData })

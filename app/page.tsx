@@ -216,13 +216,12 @@ export default function Home() {
               <div className="mb-4 flex items-center">
                 <div className="h-12 w-12 rounded-full bg-gray-200"></div>
                 <div className="ml-4">
-                  <h4 className="font-bold">Chioma A.</h4>
+                  <h4 className="font-bold">Joseph A.</h4>
                   <p className="text-sm text-gray-500">Lagos</p>
                 </div>
               </div>
               <p className="text-gray-600">
-                "Rally has helped me break out of my shell. I've tried things I never would have considered before, and
-                I've made amazing connections along the way!"
+                "Some tasks made me laugh. Some made me think. One made me cry. That’s Rally. It meets you where you are and moves you forward."
               </p>
             </div>
 
@@ -230,13 +229,12 @@ export default function Home() {
               <div className="mb-4 flex items-center">
                 <div className="h-12 w-12 rounded-full bg-gray-200"></div>
                 <div className="ml-4">
-                  <h4 className="font-bold">Tunde O.</h4>
+                  <h4 className="font-bold">Onyinye O.</h4>
                   <p className="text-sm text-gray-500">Abuja</p>
                 </div>
               </div>
               <p className="text-gray-600">
-                "The 26-Day Blueprint was exactly what I needed to finally launch my podcast. The structure and
-                community support made all the difference."
+                "Rally makes every day feel like an adventure. I’ve listened to new genres, tried yoga at 6AM, and even wrote a letter to myself. I’m discovering new parts of me and I love it."
               </p>
             </div>
 
@@ -244,13 +242,12 @@ export default function Home() {
               <div className="mb-4 flex items-center">
                 <div className="h-12 w-12 rounded-full bg-gray-200"></div>
                 <div className="ml-4">
-                  <h4 className="font-bold">Amina B.</h4>
+                  <h4 className="font-bold">Eni B.</h4>
                   <p className="text-sm text-gray-500">Port Harcourt</p>
                 </div>
               </div>
               <p className="text-gray-600">
-                "I love the daily challenges! They're just the right amount of push to get me out of my comfort zone
-                without being overwhelming."
+                "I thought I needed a big life reset. Turns out I just needed Rally’s daily nudges. 5 minutes a day and I’m actually showing up for myself."
               </p>
             </div>
           </div>
@@ -281,7 +278,7 @@ export default function Home() {
             <Button
               size="lg"
               variant="outline"
-              className="rounded-full border-white text-white hover:bg-white/10 px-8 py-6 text-lg font-bold"
+              className="rounded-full border-white text-black hover:bg-white/10 px-8 py-6 text-lg font-bold"
               asChild
             >
               <Link href="/blueprint">Explore 26-Day Blueprint</Link>

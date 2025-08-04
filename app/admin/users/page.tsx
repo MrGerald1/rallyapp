@@ -32,6 +32,13 @@ export default function UsersPage() {
           },
         })
 
+        if (response.status === 401) {
+          console.warn("Authentication required for enrollments API")
+          setError("You need to be logged in to view users. Please log in and try again.")
+          setUsers([])
+          return
+        }
+
         if (!response.ok) {
           console.error("Error response status:", response.status)
           const errorText = await response.text()

@@ -1,92 +1,45 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Plus, Trash } from "lucide-react"
-import type { BlueprintTask, Resource } from "@/lib/types"
-import { TiptapEditor } from "@/lib/tiptap-editor"
-import { toast } from "sonner"
+import { useToast } from "@/hooks/use-toast"
+import { Loader2 } from "lucide-react"
 
 interface TaskFormProps {
-  task?: BlueprintTask
-  onSubmit: (taskData: Partial<BlueprintTask>) => void
-  onCancel: () => void
-  existingDayNumbers: number[]
-  maxDays: number
+  blueprintId: string
+  task?: any
+  isEditing?: boolean
 }
 
-export function TaskForm({ task, onSubmit, onCancel, existingDayNumbers, maxDays }: TaskFormProps) {
+export function TaskForm({ blueprintId, task, isEditing = false }: TaskFormProps) {
+  const [formData, setFormData] = useState({
+    day_number: task?.day_number || 1,
+    title: task?.title || "",
+    instructions: task?.instructions || "",
+    skill_focus: task?.skill_focus || "",
+    examples: task?.examples || "",
+    story: task?.story || "",
+    resources: task?.resources || "",
+    share_prompt: task?.share_prompt || "",
+    requires_submission: task?.requires_submission || false,
+    submission_instructions: task?.submission_instructions || "",
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState<Partial<BlueprintTask>>(
-    task || {
-      day_number: getNextAvailableDay(existingDayNumbers, maxDays),
-      title: "",
-      instructions: "",
-      skill_focus: "",
-      examples: "",
-      story: "",
-      resources: [],
-      share_prompt: false,
-      requires_submission: false,
-      submission_instructions: "",
-    },
-  )
-  const [resourceTitle, setResourceTitle] = useState("")
-  const [resourceUrl, setResourceUrl] = useState("")
-  const [resourceType, setResourceType] = useState<"article" | "video" | "template" | "tool" | "other">("article")
-
-  function getNextAvailableDay(existingDays: number[], maxDays: number): number {
-    for (let i = 1; i <= maxDays; i++) {
-      if (!existingDays.includes(i)) {
-        return i
-      }
-    }
-    return 1 // Default to day 1 if all days are taken (shouldn't happen)
-  }
+  const router = useRouter()
+  const { toast } = useToast()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleSwitchChange = (name: string, checked: boolean) => {
-    setFormData((prev) => ({ ...prev, [name]: checked }))
-  }
-
-  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: Number.parseInt(value) || 0 }))
-  }
-
-  const handleAddResource = () => {
-    if (!resourceTitle || !resourceUrl) return
-
-    const newResource: Resource = {
-      title: resourceTitle,
-      url: resourceUrl,
-      type: resourceType,
-    }
-
+    const { name, value, type } = e.target
     setFormData((prev) => ({
       ...prev,
-      resources: [...(prev.resources || []), newResource],
-    }))
-
-    // Clear the form
-    setResourceTitle("")
-    setResourceUrl("")
-    setResourceType("article")
-  }
-
-  const handleRemoveResource = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      resources: (prev.resources || []).filter((_, i) => i !== index),
+      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }))
   }
 
@@ -95,200 +48,193 @@ export function TaskForm({ task, onSubmit, onCancel, existingDayNumbers, maxDays
     setIsSubmitting(true)
 
     try {
-      // Ensure required fields are present
-      if (!formData.day_number || !formData.title || !formData.instructions) {
-        toast.error("Please fill in all required fields: Day Number, Title, and Instructions")
-        setIsSubmitting(false)
-        return
+      const url =
+        isEditing && task ? `/api/blueprints/${blueprintId}/tasks/${task.id}` : `/api/blueprints/${blueprintId}/tasks`
+
+      const method = isEditing ? "PATCH" : "POST"
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to save task")
       }
 
-      console.log("Submitting task form:", formData)
-      await onSubmit(formData)
-    } catch (error) {
-      console.error("Error submitting task:", error)
+      toast({
+        title: "Success",
+        description: isEditing ? "Task updated successfully" : "Task created successfully",
+      })
+
+      router.push(`/admin/blueprints/${blueprintId}/tasks`)
+    } catch (err: any) {
+      console.error("Error saving task:", err)
+      toast({
+        title: "Error",
+        description: err.message || "Failed to save task",
+        variant: "destructive",
+      })
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="day_number">Day Number</Label>
-          <Input
-            id="day_number"
-            name="day_number"
-            type="number"
-            min="1"
-            max={maxDays}
-            value={formData.day_number}
-            onChange={handleNumberChange}
-          />
-          <p className="text-xs text-muted-foreground">Day number must be unique for this blueprint (1-{maxDays})</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="title">Task Title</Label>
-          <Input
-            id="title"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            placeholder="e.g., Define Your Idea"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="instructions">Instructions</Label>
-        <TiptapEditor
-          content={formData.instructions || ""}
-          onChange={(content) => setFormData((prev) => ({ ...prev, instructions: content }))}
-          placeholder="Detailed instructions for the task..."
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="skill_focus">Skill Focus</Label>
-        <Input
-          id="skill_focus"
-          name="skill_focus"
-          value={formData.skill_focus}
-          onChange={handleChange}
-          placeholder="e.g., Market Research"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="examples">Context & Examples</Label>
-        <TiptapEditor
-          content={formData.examples || ""}
-          onChange={(content) => setFormData((prev) => ({ ...prev, examples: content }))}
-          placeholder="Provide examples relevant to the context..."
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="story">Inspirational Story</Label>
-        <TiptapEditor
-          content={formData.story || ""}
-          onChange={(content) => setFormData((prev) => ({ ...prev, story: content }))}
-          placeholder="Share an inspirational story related to this task..."
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Resources</Label>
-        <div className="rounded-lg border p-4">
-          <div className="space-y-4">
-            {/* Current resources */}
-            {formData.resources && formData.resources.length > 0 && (
-              <div className="space-y-2">
-                <Label>Current Resources:</Label>
-                <ul className="space-y-2">
-                  {formData.resources.map((resource, index) => (
-                    <li key={index} className="flex items-center justify-between rounded-md border p-2">
-                      <div>
-                        <span className="font-medium">{resource.title}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">({resource.type})</span>
-                        <div className="text-xs text-blue-500">{resource.url}</div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveResource(index)}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Add new resource */}
-            <div className="space-y-2">
-              <Label>Add Resource:</Label>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Input
-                  placeholder="Resource Title"
-                  value={resourceTitle}
-                  onChange={(e) => setResourceTitle(e.target.value)}
-                />
-                <Input placeholder="URL" value={resourceUrl} onChange={(e) => setResourceUrl(e.target.value)} />
-              </div>
-              <div className="flex items-center justify-between">
-                <Select value={resourceType} onValueChange={(value) => setResourceType(value as any)}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Resource Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="article">Article</SelectItem>
-                    <SelectItem value="video">Video</SelectItem>
-                    <SelectItem value="template">Template</SelectItem>
-                    <SelectItem value="tool">Tool</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button type="button" variant="outline" size="sm" onClick={handleAddResource}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Resource
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4 rounded-lg border p-4">
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="share_prompt"
-            checked={formData.share_prompt}
-            onCheckedChange={(checked) => handleSwitchChange("share_prompt", checked)}
-          />
-          <Label htmlFor="share_prompt">Encourage participants to share their progress</Label>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="requires_submission"
-            checked={formData.requires_submission}
-            onCheckedChange={(checked) => handleSwitchChange("requires_submission", checked)}
-          />
-          <Label htmlFor="requires_submission">Require submission to complete this task</Label>
-        </div>
-
-        {formData.requires_submission && (
-          <div className="space-y-2 mt-2 pl-6">
-            <Label htmlFor="submission_instructions">Submission Instructions</Label>
-            <TiptapEditor
-              content={formData.submission_instructions || ""}
-              onChange={(content) => setFormData((prev) => ({ ...prev, submission_instructions: content }))}
-              placeholder="Instructions for what users should submit..."
+    <Card>
+      <form onSubmit={handleSubmit}>
+        <CardHeader>
+          <CardTitle>{isEditing ? "Edit Task" : "Create Task"}</CardTitle>
+          <CardDescription>
+            {isEditing ? "Update the details of your existing task" : "Create a new task for your blueprint"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="day_number">Day Number</Label>
+            <Input
+              id="day_number"
+              name="day_number"
+              type="number"
+              min="1"
+              value={formData.day_number}
+              onChange={handleChange}
+              required
             />
           </div>
-        )}
-      </div>
 
-      <div className="flex space-x-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {task ? "Updating..." : "Creating..."}
-            </>
-          ) : (
-            <>{task ? "Update" : "Create"} Task</>
+          <div className="space-y-2">
+            <Label htmlFor="title">Title</Label>
+            <Input
+              id="title"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              placeholder="Enter task title"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="instructions">Instructions</Label>
+            <Textarea
+              id="instructions"
+              name="instructions"
+              value={formData.instructions}
+              onChange={handleChange}
+              placeholder="Enter task instructions"
+              rows={4}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="skill_focus">Skill Focus</Label>
+            <Input
+              id="skill_focus"
+              name="skill_focus"
+              value={formData.skill_focus}
+              onChange={handleChange}
+              placeholder="Enter the skill focus for this task"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="examples">Examples</Label>
+            <Textarea
+              id="examples"
+              name="examples"
+              value={formData.examples}
+              onChange={handleChange}
+              placeholder="Provide examples for this task"
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="story">Inspirational Story</Label>
+            <Textarea
+              id="story"
+              name="story"
+              value={formData.story}
+              onChange={handleChange}
+              placeholder="Share an inspirational story related to this task"
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="resources">Resources</Label>
+            <Textarea
+              id="resources"
+              name="resources"
+              value={formData.resources}
+              onChange={handleChange}
+              placeholder="Add resources (links, articles, etc.)"
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="share_prompt">Share Prompt</Label>
+            <Textarea
+              id="share_prompt"
+              name="share_prompt"
+              value={formData.share_prompt}
+              onChange={handleChange}
+              placeholder="Prompt for users to share their work"
+              rows={2}
+            />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="requires_submission"
+              name="requires_submission"
+              checked={formData.requires_submission}
+              onChange={handleChange}
+              className="rounded border-gray-300"
+            />
+            <Label htmlFor="requires_submission">Requires Submission</Label>
+          </div>
+
+          {formData.requires_submission && (
+            <div className="space-y-2">
+              <Label htmlFor="submission_instructions">Submission Instructions</Label>
+              <Textarea
+                id="submission_instructions"
+                name="submission_instructions"
+                value={formData.submission_instructions}
+                onChange={handleChange}
+                placeholder="Instructions for what users should submit"
+                rows={3}
+              />
+            </div>
           )}
-        </Button>
-      </div>
-    </form>
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          <Button type="button" variant="outline" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isEditing ? "Updating..." : "Creating..."}
+              </>
+            ) : isEditing ? (
+              "Update Task"
+            ) : (
+              "Create Task"
+            )}
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
   )
 }

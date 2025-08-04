@@ -35,7 +35,15 @@ export default function AdminBlueprintsPage() {
 
       const data = await response.json()
       console.log("Fetched blueprints:", data)
-      setBlueprints(data)
+
+      // Check if data.blueprints exists, otherwise use data directly
+      const blueprintsData = data.blueprints || data
+      if (!Array.isArray(blueprintsData)) {
+        console.error("Unexpected data format:", data)
+        throw new Error("Received invalid data format from server")
+      }
+
+      setBlueprints(blueprintsData)
     } catch (error: any) {
       console.error("Error fetching blueprints:", error)
       setError(error.message || "Failed to load blueprints")

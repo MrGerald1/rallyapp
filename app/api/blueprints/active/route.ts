@@ -1,9 +1,13 @@
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+
+export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 export async function GET() {
   try {
-    const supabase = createServerSupabaseClient()
+    const supabase = createRouteHandlerClient({ cookies })
 
     // Get the active blueprint
     const { data, error } = await supabase
@@ -12,38 +16,32 @@ export async function GET() {
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle()
+      .single()
 
     if (error) {
       console.error("Error fetching active blueprint:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
 
-    if (!data) {
-      return NextResponse.json({ error: "No active blueprint found" }, { status: 404 })
+      if (error.code === "PGRST116") {
+        return NextResponse.json({ error: "No active blueprint found" }, { status: 404 })
+      }
+
+      return NextResponse.json({ error: "Failed to fetch active blueprint" }, { status: 500 })
     }
 
     return NextResponse.json(data)
-  } catch (error: any) {
-    console.error("Unexpected error in GET /api/blueprints/active:", error)
-    return NextResponse.json({ error: "Failed to fetch active blueprint" }, { status: 500 })
+  } catch (error) {
+    console.error("Unexpected error in active blueprint route:", error)
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })
   }
 }
 
-// Add OPTIONS method to handle preflight requests
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS, HEAD",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Max-Age": "86400",
+      "Access-Control-Allow-Origin": "*",
     },
   })
-}
-
-// Add HEAD method to handle HEAD requests
-export async function HEAD() {
-  return new NextResponse(null, { status: 200 })
 }

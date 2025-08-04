@@ -1,113 +1,99 @@
-import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import { type NextRequest, NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 
-export async function GET(request: Request, { params }: { params: { id: string; taskId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: { id: string; taskId: string } }) {
   try {
-    const { id: blueprintId, taskId } = params
+    const supabase = createClient()
 
-    if (!blueprintId || !taskId) {
-      return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
-    }
-
-    const supabase = createServerSupabaseClient()
-
-    // Get specific task
-    const { data, error } = await supabase
+    const { data: task, error } = await supabase
       .from("blueprint_tasks")
       .select("*")
-      .eq("blueprint_id", blueprintId)
-      .eq("id", taskId)
+      .eq("id", params.taskId)
+      .eq("blueprint_id", params.id)
       .single()
 
     if (error) {
-      console.error("Error fetching blueprint task:", error)
-      if (error.code === "PGRST116") {
-        return NextResponse.json({ error: "Task not found" }, { status: 404 })
-      }
+      console.error("Error fetching task:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data)
-  } catch (error: any) {
-    console.error("Unexpected error in GET /api/blueprints/[id]/tasks/[taskId]:", error)
-    return NextResponse.json({ error: "Failed to fetch blueprint task" }, { status: 500 })
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({ task })
+  } catch (error) {
+    console.error("Error in GET /api/blueprints/[id]/tasks/[taskId]:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string; taskId: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string; taskId: string } }) {
   try {
-    const { id: blueprintId, taskId } = params
+    const supabase = createClient()
+    const body = await request.json()
 
-    if (!blueprintId || !taskId) {
-      return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
-    }
-
-    const taskData = await request.json()
-    const supabase = createServerSupabaseClient()
-
-    // Update task
-    const { data, error } = await supabase
+    const { data: task, error } = await supabase
       .from("blueprint_tasks")
-      .update(taskData)
-      .eq("blueprint_id", blueprintId)
-      .eq("id", taskId)
+      .update({
+        day_number: body.day_number,
+        title: body.title,
+        instructions: body.instructions,
+        skill_focus: body.skill_focus,
+        examples: body.examples,
+        story: body.story,
+        resources: body.resources,
+        share_prompt: body.share_prompt,
+        requires_submission: body.requires_submission || false,
+        submission_instructions: body.submission_instructions,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", params.taskId)
+      .eq("blueprint_id", params.id)
       .select()
       .single()
 
     if (error) {
-      console.error("Error updating blueprint task:", error)
-      if (error.code === "PGRST116") {
-        return NextResponse.json({ error: "Task not found" }, { status: 404 })
-      }
+      console.error("Error updating task:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data)
-  } catch (error: any) {
-    console.error("Unexpected error in PATCH /api/blueprints/[id]/tasks/[taskId]:", error)
-    return NextResponse.json({ error: "Failed to update blueprint task" }, { status: 500 })
+    return NextResponse.json({ task })
+  } catch (error) {
+    console.error("Error in PATCH /api/blueprints/[id]/tasks/[taskId]:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string; taskId: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string; taskId: string } }) {
   try {
-    const { id: blueprintId, taskId } = params
+    const supabase = createClient()
 
-    if (!blueprintId || !taskId) {
-      return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
-    }
-
-    const supabase = createServerSupabaseClient()
-
-    // Delete task
-    const { error } = await supabase.from("blueprint_tasks").delete().eq("blueprint_id", blueprintId).eq("id", taskId)
+    const { error } = await supabase
+      .from("blueprint_tasks")
+      .delete()
+      .eq("id", params.taskId)
+      .eq("blueprint_id", params.id)
 
     if (error) {
-      console.error("Error deleting blueprint task:", error)
+      console.error("Error deleting task:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error("Unexpected error in DELETE /api/blueprints/[id]/tasks/[taskId]:", error)
-    return NextResponse.json({ error: "Failed to delete blueprint task" }, { status: 500 })
+  } catch (error) {
+    console.error("Error in DELETE /api/blueprints/[id]/tasks/[taskId]:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
-// Add OPTIONS method to handle preflight requests
 export async function OPTIONS() {
   return new NextResponse(null, {
-    status: 204,
+    status: 200,
     headers: {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, PATCH, DELETE, OPTIONS, HEAD",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Max-Age": "86400",
+      "Access-Control-Allow-Methods": "GET, PATCH, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
     },
   })
-}
-
-// Add HEAD method to handle HEAD requests
-export async function HEAD() {
-  return new NextResponse(null, { status: 200 })
 }

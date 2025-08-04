@@ -1,136 +1,67 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { BlueprintTask } from "@/lib/types"
-import { TaskForm } from "@/components/blueprint/task-form"
 import { Loader2, ArrowLeft, Plus, Edit, Trash, Calendar } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-import { calculateCurrentDay } from "@/lib/blueprint-api"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { TaskForm } from "@/components/blueprint/task-form"
+import {
+  getBlueprint,
+  getBlueprintTasks,
+  createBlueprintTask,
+  updateBlueprintTask,
+  deleteBlueprintTask,
+  calculateCurrentDay,
+} from "@/lib/api/blueprint-api"
+import type { Blueprint, BlueprintTask } from "@/lib/types/blueprint"
 
 export default function BlueprintTasksPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
-  const [blueprint, setBlueprint] = useState<any>(null)
+  const [blueprint, setBlueprint] = useState<Blueprint | null>(null)
   const [tasks, setTasks] = useState<BlueprintTask[]>([])
   const [editingTask, setEditingTask] = useState<BlueprintTask | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentDay, setCurrentDay] = useState(0)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-        console.log("Fetching blueprint and tasks data...")
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
 
-        // Fetch blueprint details with error handling
-        const blueprintResponse = await fetch(`/api/blueprints/${params.id}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            // Add cache busting
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            Pragma: "no-cache",
-            Expires: "0",
-          },
-        })
+      // Fetch blueprint details
+      const blueprintData = await getBlueprint(params.id)
+      setBlueprint(blueprintData)
 
-        if (!blueprintResponse.ok) {
-          console.error("Blueprint response error:", blueprintResponse.status)
-          const errorText = await blueprintResponse.text()
-          console.error("Error response:", errorText)
-          let errorData
-          try {
-            errorData = JSON.parse(errorText)
-          } catch (e) {
-            errorData = { error: `Failed to fetch blueprint: ${blueprintResponse.status}` }
-          }
-          throw new Error(errorData.error || `Failed to fetch blueprint: ${blueprintResponse.status}`)
-        }
+      // Calculate current day
+      const calculatedDay = calculateCurrentDay(blueprintData.start_date)
+      setCurrentDay(calculatedDay)
 
-        const blueprintData = await blueprintResponse.json()
-        console.log("Fetched blueprint:", blueprintData)
-        setBlueprint(blueprintData)
-
-        // Calculate current day based on blueprint start date
-        if (blueprintData.start_date) {
-          const calculatedDay = calculateCurrentDay(blueprintData.start_date)
-          console.log(`Calculated current day: ${calculatedDay} for blueprint starting on ${blueprintData.start_date}`)
-          setCurrentDay(calculatedDay)
-        }
-
-        // Fetch tasks with error handling
-        const tasksResponse = await fetch(`/api/blueprints/${params.id}/tasks`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            // Add cache busting
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            Pragma: "no-cache",
-            Expires: "0",
-          },
-        })
-
-        if (!tasksResponse.ok) {
-          console.error("Tasks response error:", tasksResponse.status)
-          const errorText = await tasksResponse.text()
-          console.error("Error response:", errorText)
-          let errorData
-          try {
-            errorData = JSON.parse(errorText)
-          } catch (e) {
-            errorData = { error: `Failed to fetch tasks: ${tasksResponse.status}` }
-          }
-          throw new Error(errorData.error || `Failed to fetch tasks: ${tasksResponse.status}`)
-        }
-
-        const tasksData = await tasksResponse.json()
-        console.log("Fetched tasks:", tasksData)
-        setTasks(tasksData)
-      } catch (error: any) {
-        console.error("Error fetching data:", error)
-        setError(error.message || "Failed to load data")
-        toast.error("Failed to load blueprint tasks: " + (error.message || "Unknown error"))
-      } finally {
-        setIsLoading(false)
-      }
+      // Fetch tasks
+      const tasksData = await getBlueprintTasks(params.id)
+      setTasks(tasksData)
+    } catch (error: any) {
+      console.error("Error fetching data:", error)
+      setError(error.message || "Failed to load data")
+      toast.error("Failed to load blueprint tasks: " + (error.message || "Unknown error"))
+    } finally {
+      setIsLoading(false)
     }
-
-    fetchData()
   }, [params.id])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   const handleCreateTask = async (taskData: Partial<BlueprintTask>) => {
     try {
-      console.log("Creating task:", taskData)
-
-      const response = await fetch(`/api/blueprints/${params.id}/tasks`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(taskData),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        let data
-        try {
-          data = JSON.parse(errorText)
-        } catch (e) {
-          data = { error: `Failed to create task: ${response.status}` }
-        }
-        console.error("Error response:", data)
-        throw new Error(data.error || "Failed to create task")
-      }
-
-      const newTask = await response.json()
-      console.log("Created task:", newTask)
+      const newTask = await createBlueprintTask(params.id, taskData as any)
       setTasks((prev) => [...prev, newTask])
       setIsCreating(false)
       toast.success("Task created successfully")
@@ -144,30 +75,7 @@ export default function BlueprintTasksPage({ params }: { params: { id: string } 
     if (!editingTask) return
 
     try {
-      console.log("Updating task:", taskData)
-
-      const response = await fetch(`/api/blueprints/${params.id}/tasks/${editingTask.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(taskData),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        let data
-        try {
-          data = JSON.parse(errorText)
-        } catch (e) {
-          data = { error: `Failed to update task: ${response.status}` }
-        }
-        console.error("Error response:", data)
-        throw new Error(data.error || "Failed to update task")
-      }
-
-      const updatedTask = await response.json()
-      console.log("Updated task:", updatedTask)
+      const updatedTask = await updateBlueprintTask(params.id, editingTask.id, taskData)
       setTasks((prev) => prev.map((task) => (task.id === updatedTask.id ? updatedTask : task)))
       setEditingTask(null)
       toast.success("Task updated successfully")
@@ -183,25 +91,7 @@ export default function BlueprintTasksPage({ params }: { params: { id: string } 
     }
 
     try {
-      console.log("Deleting task:", taskId)
-
-      const response = await fetch(`/api/blueprints/${params.id}/tasks/${taskId}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        let data
-        try {
-          data = JSON.parse(errorText)
-        } catch (e) {
-          data = { error: `Failed to delete task: ${response.status}` }
-        }
-        console.error("Error response:", data)
-        throw new Error(data.error || "Failed to delete task")
-      }
-
-      console.log("Task deleted successfully")
+      await deleteBlueprintTask(params.id, taskId)
       setTasks((prev) => prev.filter((task) => task.id !== taskId))
       toast.success("Task deleted successfully")
     } catch (error: any) {
@@ -221,7 +111,10 @@ export default function BlueprintTasksPage({ params }: { params: { id: string } 
   if (error || !blueprint) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-red-500">{error || "Blueprint not found"}</p>
+        <Alert variant="destructive" className="max-w-md">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error || "Blueprint not found"}</AlertDescription>
+        </Alert>
         <Button className="mt-4" onClick={() => router.push("/admin/blueprints")}>
           Back to Blueprints
         </Button>
@@ -340,9 +233,6 @@ export default function BlueprintTasksPage({ params }: { params: { id: string } 
                       <span className="rounded-full bg-primary/10 px-2 py-1">Skill: {task.skill_focus}</span>
                       {task.share_prompt && (
                         <span className="rounded-full bg-green-100 px-2 py-1 text-green-800">Share Prompt</span>
-                      )}
-                      {task.requires_submission && (
-                        <span className="rounded-full bg-blue-100 px-2 py-1 text-blue-800">Requires Submission</span>
                       )}
                       {isUnlocked ? (
                         <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-800">Unlocked</span>
