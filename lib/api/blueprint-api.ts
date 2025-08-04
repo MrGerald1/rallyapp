@@ -71,8 +71,19 @@ export async function getBlueprints(): Promise<Blueprint[]> {
 
 // Get active blueprint
 export async function getActiveBlueprint(): Promise<Blueprint> {
-  const response = await apiRequest<{ blueprint: Blueprint }>("/api/blueprints/active")
-  return response.blueprint
+  const response = await fetch("/api/blueprints/active", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch active blueprint: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return data.blueprint || data
 }
 
 // Get a specific blueprint
@@ -121,8 +132,19 @@ export async function setActiveBlueprint(id: string): Promise<{ success: boolean
 
 // Get all tasks for a blueprint
 export async function getBlueprintTasks(blueprintId: string): Promise<BlueprintTask[]> {
-  const response = await apiRequest<{ tasks: BlueprintTask[] }>(`/api/blueprints/${blueprintId}/tasks`)
-  return response.tasks || []
+  const response = await fetch(`/api/blueprints/${blueprintId}/tasks`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch tasks: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return data.tasks || []
 }
 
 // Get a specific task
@@ -136,11 +158,21 @@ export async function createBlueprintTask(
   blueprintId: string,
   task: Omit<BlueprintTask, "id" | "blueprint_id" | "created_at" | "updated_at">,
 ): Promise<BlueprintTask> {
-  const response = await apiRequest<{ task: BlueprintTask }>(`/api/blueprints/${blueprintId}/tasks`, {
+  const response = await fetch(`/api/blueprints/${blueprintId}/tasks`, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(task),
   })
-  return response.task
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || `Failed to create task: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return data.task
 }
 
 // Update a task
@@ -149,18 +181,38 @@ export async function updateBlueprintTask(
   taskId: string,
   task: Partial<BlueprintTask>,
 ): Promise<BlueprintTask> {
-  const response = await apiRequest<{ task: BlueprintTask }>(`/api/blueprints/${blueprintId}/tasks/${taskId}`, {
+  const response = await fetch(`/api/blueprints/${blueprintId}/tasks/${taskId}`, {
     method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(task),
   })
-  return response.task
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || `Failed to update task: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return data.task
 }
 
 // Delete a task
 export async function deleteBlueprintTask(blueprintId: string, taskId: string): Promise<{ success: boolean }> {
-  return apiRequest<{ success: boolean }>(`/api/blueprints/${blueprintId}/tasks/${taskId}`, {
+  const response = await fetch(`/api/blueprints/${blueprintId}/tasks/${taskId}`, {
     method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
   })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || `Failed to delete task: ${response.status}`)
+  }
+
+  return response.json()
 }
 
 /**
@@ -172,11 +224,20 @@ export async function enrollInBlueprint(
   blueprintId: string,
   enrollmentData: EnrollmentFormData,
 ): Promise<BlueprintEnrollment> {
-  const response = await apiRequest<{ enrollment: BlueprintEnrollment }>(`/api/blueprints/${blueprintId}/enroll`, {
+  const response = await fetch(`/api/blueprints/${blueprintId}/enroll`, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(enrollmentData),
   })
-  return response.enrollment
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || `Failed to enroll: ${response.status}`)
+  }
+
+  return response.json()
 }
 
 // Check if a user is enrolled in a blueprint
@@ -184,9 +245,18 @@ export async function checkBlueprintEnrollment(
   blueprintId: string,
   email: string,
 ): Promise<{ enrolled: boolean; enrollment: BlueprintEnrollment | null }> {
-  return apiRequest<{ enrolled: boolean; enrollment: BlueprintEnrollment | null }>(
-    `/api/blueprints/${blueprintId}/check-enrollment?email=${encodeURIComponent(email)}`,
-  )
+  const response = await fetch(`/api/blueprints/${blueprintId}/check-enrollment?email=${encodeURIComponent(email)}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to check enrollment: ${response.status}`)
+  }
+
+  return response.json()
 }
 
 // Get user's enrollment in a blueprint

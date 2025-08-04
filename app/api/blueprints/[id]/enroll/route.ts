@@ -5,10 +5,30 @@ import { type NextRequest, NextResponse } from "next/server"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
+// Add CORS headers for all responses
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  })
+}
+
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     if (!params.id) {
-      return NextResponse.json({ error: "Blueprint ID is required" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Blueprint ID is required" },
+        {
+          status: 400,
+          headers: corsHeaders,
+        },
+      )
     }
 
     const supabase = createRouteHandlerClient({ cookies })
@@ -19,7 +39,13 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     // Validate required fields
     if (!name || !email || !phone_number || !project_idea) {
-      return NextResponse.json({ error: "All fields are required" }, { status: 400 })
+      return NextResponse.json(
+        { error: "All fields are required" },
+        {
+          status: 400,
+          headers: corsHeaders,
+        },
+      )
     }
 
     // Check if the blueprint exists and is active
@@ -31,11 +57,23 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     if (blueprintError || !blueprint) {
       console.error(`Blueprint ${params.id} not found:`, blueprintError)
-      return NextResponse.json({ error: "Blueprint not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Blueprint not found" },
+        {
+          status: 404,
+          headers: corsHeaders,
+        },
+      )
     }
 
     if (!blueprint.is_active) {
-      return NextResponse.json({ error: "Blueprint is not currently active" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Blueprint is not currently active" },
+        {
+          status: 400,
+          headers: corsHeaders,
+        },
+      )
     }
 
     // Check if user is already enrolled
@@ -47,11 +85,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       .single()
 
     if (existingEnrollment) {
-      return NextResponse.json({
-        success: true,
-        message: "Already enrolled",
-        enrollment: existingEnrollment,
-      })
+      return NextResponse.json(
+        {
+          success: true,
+          message: "Already enrolled",
+          enrollment: existingEnrollment,
+        },
+        { headers: corsHeaders },
+      )
     }
 
     // Create new enrollment
@@ -71,28 +112,42 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     if (insertError) {
       console.error(`Error enrolling user ${email} in blueprint ${params.id}:`, insertError)
-      return NextResponse.json({ error: "Failed to enroll in blueprint" }, { status: 500 })
+      return NextResponse.json(
+        { error: "Failed to enroll in blueprint" },
+        {
+          status: 500,
+          headers: corsHeaders,
+        },
+      )
     }
 
-    return NextResponse.json({
-      success: true,
-      message: "Successfully enrolled",
-      enrollment,
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Successfully enrolled",
+        enrollment,
+      },
+      { headers: corsHeaders },
+    )
   } catch (error) {
     console.error(`Unexpected error in blueprint enrollment route:`, error)
-    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })
+    return NextResponse.json(
+      { error: "An unexpected error occurred" },
+      {
+        status: 500,
+        headers: corsHeaders,
+      },
+    )
   }
 }
 
-// Add OPTIONS method to handle preflight requests
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Origin": "*",
+// Add GET method for health checks
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  return NextResponse.json(
+    {
+      message: "Enrollment endpoint is working",
+      blueprintId: params.id,
     },
-  })
+    { headers: corsHeaders },
+  )
 }
