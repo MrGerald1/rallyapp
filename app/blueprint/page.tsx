@@ -3,51 +3,109 @@
 import { Button } from "@/components/ui/button"
 import { SiteHeader } from "@/components/site-header"
 import { Zap, Star, Users, Rocket } from "lucide-react"
-// import { BlueprintEnrollForm } from "@/components/blueprint/blueprint-enroll-form"
 import { SiteFooter } from "@/components/site-footer"
-// import { useState, useEffect } from "react"
-// import type { Blueprint } from "@/lib/types"
+import { track } from "@vercel/analytics"
+import { useEffect } from "react"
+import {
+  trackBlueprintPageView,
+  trackBlueprintCTAClick,
+  trackBlueprintFormViewed,
+  trackBlueprintFormLoaded,
+  trackBlueprintVideoEngagement,
+  trackBlueprintSignupStarted,
+} from "@/lib/twitter-tracking"
 
 export default function BlueprintPage() {
-  // const [activeBlueprint, setActiveBlueprint] = useState<Blueprint | null>(null)
-  // const [loading, setLoading] = useState(true)
-  // const [error, setError] = useState<string | null>(null)
+  // Track page view - BOTH Vercel and Twitter
+  useEffect(() => {
+    console.log("🚀 PAGE LOADED - Firing tracking events")
 
-  // Add useEffect to fetch the active blueprint
-  // useEffect(() => {
-  //   async function fetchActiveBlueprint() {
-  //     setLoading(true)
-  //     setError(null)
-  //     try {
-  //       const response = await fetch("/api/blueprints/active")
+    // Vercel Analytics (custom event name)
+    track("blueprint_page_view", {
+      page: "blueprint",
+      timestamp: new Date().toISOString(),
+    })
 
-  //       if (!response.ok) {
-  //         if (response.status === 404) {
-  //           setError("No active blueprint available at this time")
-  //           setLoading(false)
-  //           return
-  //         }
-  //         throw new Error(`Failed to fetch active blueprint: ${response.status}`)
-  //       }
-
-  //       const data = await response.json()
-  //       setActiveBlueprint(data)
-  //     } catch (err) {
-  //       console.error("Error fetching active blueprint:", err)
-  //       setError("Failed to load blueprint data")
-  //     } finally {
-  //       setLoading(false)
-  //     }
-  //   }
-
-  //   fetchActiveBlueprint()
-  // }, [])
+    // Twitter Conversion (uses tw-qbzk5-qbzk7 with content_id: blueprint-landing)
+    trackBlueprintPageView()
+  }, [])
 
   const scrollToEnroll = () => {
     const enrollSection = document.getElementById("enroll")
     if (enrollSection) {
       enrollSection.scrollIntoView({ behavior: "smooth" })
+
+      // Vercel Analytics (custom event name)
+      track("blueprint_scroll_to_enroll", {
+        action: "scroll_to_enrollment_form",
+        timestamp: new Date().toISOString(),
+      })
+
+      // Twitter Conversion (uses tw-qbzk5-qbzk7 with content_id: blueprint-enrollment)
+      trackBlueprintSignupStarted()
     }
+  }
+
+  // Track video engagement - BOTH Vercel and Twitter
+  const handleVideoClick = () => {
+    console.log("🎬 VIDEO CLICKED - Firing tracking events")
+
+    // Vercel Analytics (custom event name)
+    track("blueprint_video_engagement", {
+      action: "video_clicked",
+      video_id: "TmLtD8aY3x0",
+      timestamp: new Date().toISOString(),
+    })
+
+    // Twitter Conversion (uses tw-qbzk5-qbzk7 with content_id: blueprint-explainer)
+    trackBlueprintVideoEngagement()
+  }
+
+  // Track form visibility (when user scrolls to form) - BOTH Vercel and Twitter
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.target.id === "enroll") {
+            console.log("👁️ FORM CAME INTO VIEW - Firing tracking events")
+
+            // Vercel Analytics (custom event name)
+            track("blueprint_form_viewed", {
+              action: "enrollment_form_in_view",
+              timestamp: new Date().toISOString(),
+            })
+
+            // Twitter Conversion (uses tw-qbzk5-qbzk7 with content_id: blueprint-form)
+            trackBlueprintFormViewed()
+          }
+        })
+      },
+      { threshold: 0.5 },
+    )
+
+    const enrollSection = document.getElementById("enroll")
+    if (enrollSection) {
+      observer.observe(enrollSection)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  // Track CTA button clicks - BOTH Vercel and Twitter
+  const handleCTAClick = (location: string) => {
+    console.log(`🎯 CTA CLICKED in ${location} - Firing tracking events`)
+
+    // Vercel Analytics (custom event name)
+    track("blueprint_cta_click", {
+      action: "cta_button_clicked",
+      location: location,
+      timestamp: new Date().toISOString(),
+    })
+
+    // Twitter Conversion (uses tw-qbzk5-qbzk7 with content_id: blueprint-cta-{location})
+    trackBlueprintCTAClick(location)
+
+    scrollToEnroll()
   }
 
   return (
@@ -87,7 +145,7 @@ export default function BlueprintPage() {
               <Button
                 size="lg"
                 className="group relative overflow-hidden rounded-full bg-[#EF6C36] px-8 py-6 text-lg font-bold text-white transition-all hover:bg-[#EF6C36]/90 hover:shadow-lg animate-pulse-border"
-                onClick={scrollToEnroll}
+                onClick={() => handleCTAClick("hero")}
               >
                 <span className="relative z-10">Sounds like You - Enrol FREE!</span>
                 <span className="absolute bottom-0 left-0 h-full w-0 bg-white/20 transition-all duration-300 group-hover:w-full"></span>
@@ -164,7 +222,7 @@ export default function BlueprintPage() {
             <div className="text-center pt-8">
               <Button
                 size="lg"
-                onClick={scrollToEnroll}
+                onClick={() => handleCTAClick("real_talk")}
                 className="group relative overflow-hidden rounded-full bg-black px-8 py-6 text-lg font-bold text-white transition-all hover:bg-gray-800 hover:shadow-lg"
               >
                 <span className="relative z-10">I'm Done Waiting</span>
@@ -201,21 +259,15 @@ export default function BlueprintPage() {
                 className="absolute inset-0 h-full w-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
+                onClick={handleVideoClick}
               ></iframe>
             </div>
-
-            {/* Play button overlay for visual appeal */}
-            {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="rounded-full bg-[#EF6C36]/20 p-4 backdrop-blur-sm">
-                <Play className="h-12 w-12 text-white opacity-0 transition-opacity duration-300" />
-              </div>
-            </div> */}
           </div>
 
           <div className="mt-12">
             <Button
               size="lg"
-              onClick={scrollToEnroll}
+              onClick={() => handleCTAClick("video_section")}
               className="group relative overflow-hidden rounded-full bg-white px-8 py-6 text-lg font-bold text-[#EF6C36] transition-all hover:bg-gray-100 hover:shadow-lg"
             >
               <span className="relative z-10">Ready to Start? Let's Go!</span>
@@ -246,18 +298,6 @@ export default function BlueprintPage() {
             project.
           </p>
 
-          {/* CTA for The Blueprint */}
-          {/* <div className="text-center mb-12">
-            <Button
-              size="lg"
-              onClick={scrollToEnroll}
-              className="group relative overflow-hidden rounded-full bg-[#EF6C36] px-8 py-6 text-lg font-bold text-white transition-all hover:bg-[#EF6C36]/90 hover:shadow-lg"
-            >
-              <span className="relative z-10">Start the 26 Days</span>
-              <span className="absolute bottom-0 left-0 h-full w-0 bg-white/20 transition-all duration-300 group-hover:w-full"></span>
-            </Button>
-          </div> */}
-
           <div className="grid gap-8 md:grid-cols-2">
             <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
               <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-[#EF6C36]/10 transition-all duration-300 group-hover:bg-[#EF6C36]/20"></div>
@@ -274,13 +314,6 @@ export default function BlueprintPage() {
                 Private community access with fellow participants in the trenches. Ask the dumb questions, share
                 wins/fails, get unstuck.
               </p>
-              {/* <Button
-                onClick={scrollToEnroll}
-                className="group/btn relative overflow-hidden rounded-full bg-[#EF6C36] px-6 py-3 text-sm font-bold text-white transition-all hover:bg-[#EF6C36]/90"
-              >
-                <span className="relative z-10">Find Your People</span>
-                <span className="absolute bottom-0 left-0 h-full w-0 bg-white/20 transition-all duration-300 group-hover/btn:w-full"></span>
-              </Button> */}
             </div>
 
             <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
@@ -289,13 +322,6 @@ export default function BlueprintPage() {
               <p className="relative z-10 text-lg mb-6">
                 Log in each day. Get a clear task supported with examples and guidance. Do the work. No excuses.
               </p>
-              {/* <Button
-                onClick={scrollToEnroll}
-                className="group/btn relative overflow-hidden rounded-full bg-black px-6 py-3 text-sm font-bold text-white transition-all hover:bg-gray-800"
-              >
-                <span className="relative z-10">Show Me Today's Task</span>
-                <span className="absolute bottom-0 left-0 h-full w-0 bg-[#EF6C36]/20 transition-all duration-300 group-hover/btn:w-full"></span>
-              </Button> */}
             </div>
 
             <div className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
@@ -304,13 +330,6 @@ export default function BlueprintPage() {
               <p className="relative z-10 text-lg mb-6">
                 Build the simplest version of your idea and get real, quick feedback from potential users.
               </p>
-              {/* <Button
-                onClick={scrollToEnroll}
-                className="group/btn relative overflow-hidden rounded-full bg-green-600 px-6 py-3 text-sm font-bold text-white transition-all hover:bg-green-700"
-              >
-                <span className="relative z-10">Test the Idea Fast</span>
-                <span className="absolute bottom-0 left-0 h-full w-0 bg-white/20 transition-all duration-300 group-hover/btn:w-full"></span>
-              </Button> */}
             </div>
 
             <div className="col-span-full group relative overflow-hidden rounded-2xl bg-black p-8 text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
@@ -320,7 +339,7 @@ export default function BlueprintPage() {
                 Stay accountable with external check-ins and showcase what you built.
               </p>
               <Button
-                onClick={scrollToEnroll}
+                onClick={() => handleCTAClick("blueprint_section")}
                 className="group/btn relative overflow-hidden rounded-full bg-[#EF6C36] px-6 py-3 text-sm font-bold text-white transition-all hover:bg-[#EF6C36]/90"
               >
                 <span className="relative z-10">I'll Be There</span>
@@ -361,7 +380,7 @@ export default function BlueprintPage() {
           <div className="text-center">
             <Button
               size="lg"
-              onClick={scrollToEnroll}
+              onClick={() => handleCTAClick("outcome_section")}
               className="group relative overflow-hidden rounded-full bg-gradient-to-r from-[#EF6C36] to-[#D55A2A] px-8 py-6 text-lg font-bold text-white transition-all hover:shadow-lg"
             >
               <span className="relative z-10">Let's Launch This</span>
@@ -370,48 +389,6 @@ export default function BlueprintPage() {
           </div>
         </div>
       </section>
-
-      {/* Call to Action Section - Original with custom form (commented out for now)
-      <section id="enroll" className="relative overflow-hidden bg-black py-20 text-white">
-        <div className="absolute -left-32 -top-32 h-64 w-64 rounded-full bg-[#EF6C36]/20 blur-3xl"></div>
-        <div className="absolute -right-32 -bottom-32 h-64 w-64 rounded-full bg-[#EF6C36]/20 blur-3xl"></div>
-
-        <div className="container relative z-10 mx-auto max-w-4xl px-4 text-center">
-          <div className="mb-8 inline-block rounded-full bg-[#EF6C36]/20 px-4 py-1 text-sm font-bold uppercase tracking-wider text-[#EF6C36]">
-            Limited Spots Available
-          </div>
-
-          <h2 className="mb-6 font-heading text-5xl font-black uppercase sm:text-6xl">
-            So. <span className="text-[#EF6C36]">You In?</span>
-          </h2>
-
-          <p className="mx-auto mb-12 max-w-2xl text-xl">
-            The 26-Day Blueprint is <span className="font-bold text-[#EF6C36]">FREE</span>. Applications open August 4th
-            to close on <span className="font-bold text-[#EF6C36]">August 31st </span>2025. Spots are limited. Don't
-            overthink it.
-          </p>
-
-          <div className="relative mx-auto max-w-2xl rounded-2xl bg-white p-8 text-black shadow-2xl">
-            <div className="absolute -right-4 -top-4 rounded-full bg-[#EF6C36] px-4 py-2 text-sm font-bold text-white animate-pulse-border">
-              FREE
-            </div>
-            {loading ? (
-              <div className="py-8 text-center">Loading blueprint information...</div>
-            ) : error ? (
-              <div className="py-8 text-center text-red-500">{error}</div>
-            ) : activeBlueprint ? (
-              <BlueprintEnrollForm blueprintId={activeBlueprint.id} />
-            ) : (
-              <div className="py-8 text-center">No active blueprint available at this time.</div>
-            )}
-          </div>
-
-          <p className="mt-8 text-sm text-gray-400">
-            Hit the button and get ready. Simple. And yeah, the 26 days thing? You'll see...😏
-          </p>
-        </div>
-      </section>
-      */}
 
       {/* Call to Action Section - Google Form */}
       <section id="enroll" className="relative overflow-hidden bg-black py-20 text-white">
@@ -429,8 +406,7 @@ export default function BlueprintPage() {
 
           <p className="mx-auto mb-12 max-w-2xl text-xl">
             The 26-Day Blueprint is <span className="font-bold text-[#EF6C36]">FREE</span>. Applications open August 4th
-            to close on <span className="font-bold text-[#EF6C36]">August 31st </span>2025. Spots are limited. Don't
-            overthink it.
+            2025. Spots are limited. Don't overthink it.
           </p>
 
           <div className="relative mx-auto max-w-4xl rounded-2xl bg-white p-4 shadow-2xl">
@@ -447,6 +423,18 @@ export default function BlueprintPage() {
                 marginWidth="0"
                 className="w-full"
                 title="26-Day Blueprint Enrollment Form"
+                onLoad={() => {
+                  console.log("📄 GOOGLE FORM LOADED - Firing tracking events")
+
+                  // Vercel Analytics (custom event name)
+                  track("blueprint_form_loaded", {
+                    action: "google_form_iframe_loaded",
+                    timestamp: new Date().toISOString(),
+                  })
+
+                  // Twitter Conversion (uses tw-qbzk5-qbzk7 with content_id: blueprint-google-form)
+                  trackBlueprintFormLoaded()
+                }}
               >
                 Loading…
               </iframe>
